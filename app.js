@@ -1,7 +1,7 @@
 /* ══════════════════════════════════════════
    STATE
 ══════════════════════════════════════════ */
-const S={prov:'openrouter',key:'',model:'',docxFile:null,docxText:'',category:'',topic:'',topicLabel:'',result:null,kws:[],currentStep:1};
+const S={prov:'openrouter',key:'',model:'',docxFile:null,docxText:'',category:'',topic:'',topicLabel:'',result:null,kws:[],currentStep:1,pageUrl:''};
 
 /* ══════════════════════════════════════════
    INIT — Build provider UI
@@ -227,31 +227,25 @@ async function runOpt(){
   btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Running Full SEO Audit…';
   document.getElementById('progress-wrap').classList.add('show');
 
-  // Store used prompts for display
-  S.promptsUsed={};
-
+  // Run optimization
   try{
-    phase('ps-kw',12,'Researching Singapore market keywords…');
-    const kwPrompt=pKw();
-    S.promptsUsed.kw=kwPrompt;
+    phase('ps-kw',12,'Researching keywords for: '+S.topicLabel.slice(0,40)+'…');
+    const kwPrompt = (window.promptOverrides?.kw) || pKw();
     const kwR=await callAI(kwPrompt);
     S.kws=parseJSON(kwR)?.keywords||[];
 
-    phase('ps-serp',28,'Analyzing top Singapore SERP competitors…');
-    const serpPrompt=pSERP();
-    S.promptsUsed.serp=serpPrompt;
+    phase('ps-serp',28,'Analyzing top SERP competitors…');
+    const serpPrompt = (window.promptOverrides?.serp) || pSERP();
     const serpR=await callAI(serpPrompt);
     const serpD=parseJSON(serpR)||{};
 
     phase('ps-audit',48,'Running SEO audit on your document…');
-    const auditPrompt=pAudit();
-    S.promptsUsed.audit=auditPrompt;
+    const auditPrompt = (window.promptOverrides?.audit) || pAudit();
     const auditR=await callAI(auditPrompt);
     const auditD=parseJSON(auditR)||{};
 
     phase('ps-opt',68,'Rewriting with full SEO optimization…');
     const optPrompt=pOpt(kwR,serpR,auditR);
-    S.promptsUsed.opt=optPrompt;
     const optR=await callAI(optPrompt);
     const optD=parseJSON(optR)||{};
 
@@ -363,24 +357,6 @@ function renderReport(){
     document.getElementById('inst-content').innerHTML=`<h4>💡 Your Instructions: "${extra}"</h4><p>${(opt.instructions_response||'').replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>')}</p>`;
   }
 
-  // Prompts used section
-  if(S.promptsUsed){
-    document.getElementById('rpt-prompts').style.display='block';
-    document.getElementById('prompts-nav-li').style.display='list-item';
-    document.getElementById('prompts-content').innerHTML=`
-      <div style="margin-bottom:14px;font-size:13px;color:#444;">These are the exact prompts used to generate your report. You can use these to understand how the AI was instructed.</div>
-      ${Object.entries({
-        'Keyword Research':S.promptsUsed.kw,
-        'SERP Analysis':S.promptsUsed.serp,
-        'SEO Audit':S.promptsUsed.audit,
-        'Content Optimization':S.promptsUsed.opt?.slice(0,1500)+'...(truncated)'
-      }).map(([label,prompt])=>`
-        <div style="margin-bottom:16px;">
-          <div style="font-weight:700;color:#0d2b6e;margin-bottom:6px;font-size:13px;">📋 ${label}</div>
-          <pre style="background:#f8f9fa;border:1px solid #dde5f3;border-left:4px solid #1a4fad;border-radius:0 8px 8px 0;padding:12px 16px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#333;white-space:pre-wrap;overflow-x:auto;max-height:200px;overflow-y:auto;">${(prompt||'').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre>
-        </div>`).join('')}`;
-  }
-
   // Changes summary (what was added/removed)
   const added=opt.changes_added||[];
   const removed=opt.changes_removed||[];
@@ -426,36 +402,49 @@ body{background:#f4f7fc;padding:20px;font-family:'Inter',sans-serif;}
 async function dlDOCX(){
   const btn=document.getElementById('btn-docx');
   const origLabel='📄 Download Blog (DOCX)';
+  const opt=S.result?.opt;
+  if(!opt){alert('No result yet.');return;}
 
-  // Try loading docx library
-  if(typeof docx==='undefined'){
-    btn.innerHTML='<span class="spinner spinner-dark"></span> Loading DOCX library…';
+  // Try to get docx library — check multiple global names CDNs use
+  let docxLib = window.docx || window.DocxJS || null;
+
+  if(!docxLib){
+    btn.innerHTML='<span class="spinner spinner-dark"></span> Loading library…';
     btn.disabled=true;
-    try{
-      await loadScript('https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js');
-    }catch{
+    const cdns=[
+      'https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js',
+      'https://unpkg.com/docx@8.5.0/build/index.js',
+      'https://cdnjs.cloudflare.com/ajax/libs/docx/8.5.0/index.js',
+    ];
+    for(const url of cdns){
       try{
-        await loadScript('https://unpkg.com/docx@8.5.0/build/index.js');
-      }catch{
-        btn.innerHTML=origLabel;btn.disabled=false;
-        alert('Could not load DOCX library. Please use "Download Full Report (HTML)" instead — it preserves all formatting including green/red color coding.');
-        return;
-      }
+        await loadScript(url);
+        docxLib = window.docx || null;
+        if(docxLib) break;
+      }catch(e){ console.warn('CDN failed:',url); }
     }
   }
 
-  if(typeof docx==='undefined'){
-    btn.innerHTML=origLabel;btn.disabled=false;
-    alert('DOCX library unavailable. Please download the HTML report instead.');
+  // If library still unavailable, generate clean styled HTML as .doc (Word opens it fine)
+  if(!docxLib){
+    btn.innerHTML='<span class="spinner spinner-dark"></span> Generating…';
+    try{
+      const htmlContent = buildWordHTML(opt);
+      const blob = new Blob([htmlContent], {type:'application/msword'});
+      doDL(blob, 'SEO-Blog-'+safe(S.topicLabel)+'.doc');
+      btn.innerHTML='✅ Downloaded (.doc)!';
+      setTimeout(()=>{btn.innerHTML=origLabel;btn.disabled=false;},3000);
+    }catch(e){
+      btn.innerHTML=origLabel;btn.disabled=false;
+      alert('Download failed: '+e.message);
+    }
     return;
   }
 
-  const opt=S.result?.opt;
-  if(!opt){alert('No result yet.');return;}
   btn.innerHTML='<span class="spinner spinner-dark"></span> Building DOCX…';btn.disabled=true;
 
   try{
-    const{Document,Packer,Paragraph,TextRun,HeadingLevel,AlignmentType,BorderStyle,Table,TableRow,TableCell,WidthType}=docx;
+    const{Document,Packer,Paragraph,TextRun,HeadingLevel,Table,TableRow,TableCell,WidthType}=docxLib;
     const tmp=document.createElement('div');
     tmp.innerHTML=opt.optimized_html||'';
     const ch=[];
@@ -605,6 +594,45 @@ async function dlDOCX(){
     btn.innerHTML=origLabel;btn.disabled=false;
     alert('DOCX build error: '+e.message+'\n\nPlease use the HTML download instead — it preserves all color coding perfectly.');
   }
+}
+
+/* Build a Word-compatible HTML .doc file as fallback when docx CDN unavailable */
+function buildWordHTML(opt){
+  const html = opt.optimized_html || '';
+  // Convert color-block divs to styled spans for Word
+  const styled = html
+    .replace(/<div class="new-block">/g, '<div style="background:#e6f5ef;border-left:4px solid #0d6e3f;padding:8px 12px;margin:8px 0;">')
+    .replace(/<div class="remove-block">/g, '<div style="background:#fdeaea;border-left:4px solid #c0392b;padding:8px 12px;margin:8px 0;text-decoration:line-through;color:#c0392b;">')
+    .replace(/<span class="new-inline">/g, '<span style="background:#d4edda;color:#0d6e3f;font-weight:600;">')
+    .replace(/<span class="remove-inline">/g, '<span style="color:#c0392b;text-decoration:line-through;">');
+  return `<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="UTF-8">
+<style>
+  body{font-family:Calibri,sans-serif;font-size:11pt;color:#1a1a1a;margin:2cm;}
+  h1{font-size:20pt;color:#0d2b6e;border-bottom:2px solid #0d2b6e;padding-bottom:6pt;}
+  h2{font-size:15pt;color:#0d2b6e;margin-top:18pt;}
+  h3{font-size:13pt;color:#1c3870;margin-top:14pt;}
+  p{line-height:1.6;margin:6pt 0;}
+  table{border-collapse:collapse;width:100%;margin:12pt 0;}
+  th{background:#0d2b6e;color:#fff;padding:6pt 8pt;text-align:left;font-size:10pt;}
+  td{border:1px solid #dde5f3;padding:5pt 8pt;font-size:10pt;}
+  .meta-box{background:#f0f4fa;border:1px solid #b8ccf5;padding:12pt;margin-bottom:16pt;border-radius:4pt;}
+  .legend{background:#f8f9fa;border:1px solid #dde5f3;padding:8pt 12pt;margin-bottom:12pt;font-size:9pt;}
+</style>
+</head><body>
+<div class="meta-box">
+  <strong>Meta Title:</strong> ${opt.meta_title||''}<br>
+  <strong>Meta Description:</strong> ${opt.meta_description||''}<br>
+  <strong>URL Slug:</strong> ${opt.url_slug||''}
+</div>
+<div class="legend">
+  <span style="color:#0d6e3f;font-weight:bold;">■ GREEN BACKGROUND</span> = New content added &nbsp;|&nbsp;
+  <span style="color:#c0392b;font-weight:bold;">■ RED BACKGROUND + strikethrough</span> = Remove &nbsp;|&nbsp;
+  Normal = Keep as-is
+</div>
+${styled}
+</body></html>`;
 }
 
 function loadScript(src){
