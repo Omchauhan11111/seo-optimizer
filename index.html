@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3E Accounting — SEO Blog Optimizer</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-logo">3E</div>
+    <div>
+      <div class="brand-name">SEO Blog Optimizer</div>
+      <div class="brand-sub">3E Accounting Singapore</div>
+    </div>
+  </div>
+  <div class="topbar-badge">AI-Powered · Smart Category Mode</div>
+</header>
+
+<main class="page">
+
+  <!-- STEPPER -->
+  <div class="stepper">
+    <div class="step active" id="stp-1"><div class="step-num" title="Go back to Step 1">1</div><div class="step-label">API</div></div>
+    <div class="step" id="stp-2"><div class="step-num" title="Go back to Step 2">2</div><div class="step-label">Upload</div></div>
+    <div class="step" id="stp-3"><div class="step-num" title="Go back to Step 3">3</div><div class="step-label">Category</div></div>
+    <div class="step" id="stp-4"><div class="step-num" title="Go back to Step 4">4</div><div class="step-label">Topic</div></div>
+    <div class="step" id="stp-5"><div class="step-num" title="Go back to Step 5">5</div><div class="step-label">Options</div></div>
+    <div class="step" id="stp-6"><div class="step-num">6</div><div class="step-label">Report</div></div>
+  </div>
+
+  <!-- STEP 1 -->
+  <div id="step1" class="card">
+    <div class="card-hd"><div class="card-ico">🔑</div><div>
+      <div class="card-title">Step 1 — API Configuration</div>
+      <div class="card-sub">Choose your AI provider. Keys are never saved or sent anywhere except directly to the provider.</div>
+    </div></div>
+    <div class="prov-tabs" id="prov-tabs"></div>
+    <div id="prov-panels"></div>
+    <div id="api-err" class="alert alert-red" style="display:none;margin-top:12px;">
+      <span>❌</span><div id="api-err-txt"></div>
+    </div>
+    <div style="margin-top:16px;">
+      <button class="btn btn-blue btn-lg" onclick="validateAPI()">Verify & Continue →</button>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div id="step2" class="card" style="display:none;">
+    <div class="back-bar">
+      <button class="btn-back" onclick="goBack()">← Back</button>
+      <div class="breadcrumb">Step 1: API → <span>Step 2: Upload</span></div>
+    </div>
+    <div class="card-hd"><div class="card-ico">📄</div><div>
+      <div class="card-title">Step 2 — Upload Your Document</div>
+      <div class="card-sub">Your file is processed entirely in your browser. The AI will deeply analyze your document and only suggest meaningful changes.</div>
+    </div></div>
+    <div class="upload-zone" id="upload-zone">
+      <input type="file" id="file-input" accept=".docx,.doc" onchange="handleFile(this)">
+      <div style="font-size:32px;margin-bottom:8px;">📁</div>
+      <div style="font-weight:700;font-size:15px;margin-bottom:4px;">Click to browse or drag & drop</div>
+      <div style="font-size:12px;color:var(--text3);">Supports .docx · Max 10 MB</div>
+      <div class="upload-done" id="upload-done"><span>✅</span><span id="fname-text"></span></div>
+    </div>
+    <div id="doc-info" class="doc-info-bar" style="display:none;margin-top:12px;"></div>
+    <div style="margin-top:16px;">
+      <button class="btn btn-blue btn-lg" id="btn-step2" onclick="goStep3()" disabled>Continue →</button>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div id="step3" class="card" style="display:none;">
+    <div class="back-bar">
+      <button class="btn-back" onclick="goBack()">← Back</button>
+      <div class="breadcrumb">Step 2: Upload → <span>Step 3: Category</span></div>
+    </div>
+    <div class="card-hd"><div class="card-ico">📂</div><div>
+      <div class="card-title">Step 3 — Select Content Category</div>
+      <div class="card-sub">This shapes the entire optimization strategy — content length, TOC, interlinking focus, CTA style.</div>
+    </div></div>
+    <div class="cat-grid">
+      <div class="cat-card" onclick="selectCat('incorporation')" id="cat-incorporation">
+        <div class="cat-ico" style="background:#e8f0fd;">🏢</div>
+        <div>
+          <div class="cat-name">Incorporation</div>
+          <div class="cat-desc">Company registration, setup guides, structure comparisons</div>
+          <span class="cat-badge badge-toc">✓ With Table of Contents</span>
+        </div>
+      </div>
+      <div class="cat-card" onclick="selectCat('resources')" id="cat-resources">
+        <div class="cat-ico" style="background:#fff8ec;">📚</div>
+        <div>
+          <div class="cat-name">Resources</div>
+          <div class="cat-desc">Guides, compliance, taxation, HR resources</div>
+          <span class="cat-badge badge-toc">✓ With Table of Contents</span>
+        </div>
+      </div>
+      <div class="cat-card" onclick="selectCat('services')" id="cat-services">
+        <div class="cat-ico" style="background:#e6f5ef;">⚙️</div>
+        <div>
+          <div class="cat-name">Services</div>
+          <div class="cat-desc">Accounting, auditing, legal, immigration — focused & concise</div>
+          <span class="cat-badge badge-no-toc">No TOC · Interlinking priority</span>
+        </div>
+      </div>
+      <div class="cat-card" onclick="selectCat('blogs')" id="cat-blogs">
+        <div class="cat-ico" style="background:#fdeaea;">✍️</div>
+        <div>
+          <div class="cat-name">Blogs</div>
+          <div class="cat-desc">Informational posts, news, industry content</div>
+          <span class="cat-badge badge-toc">✓ With Table of Contents</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 4 -->
+  <div id="step4" class="card" style="display:none;">
+    <div class="back-bar">
+      <button class="btn-back" onclick="goBack()">← Back</button>
+      <div class="breadcrumb">Step 3: Category → <span>Step 4: Topic</span></div>
+    </div>
+    <div class="card-hd"><div class="card-ico">🎯</div><div>
+      <div class="card-title">Step 4 — Select Specific Topic</div>
+      <div class="card-sub">The more specific the topic, the better the keyword research and SEO strategy.</div>
+    </div></div>
+    <div class="field">
+      <label class="label">Topic / Page</label>
+      <select id="topic-select" onchange="onTopicChange()"><option value="">— Select a topic —</option></select>
+    </div>
+    <div class="field" id="custom-wrap" style="display:none;">
+      <label class="label">Enter Custom Topic</label>
+      <input type="text" id="custom-topic" placeholder="e.g. Singapore GST Registration Guide 2026">
+    </div>
+    <div id="topic-preview" style="display:none;margin-bottom:14px;"></div>
+    <button class="btn btn-blue btn-lg" id="btn-step4" onclick="goStep5()" disabled>Continue to Options →</button>
+  </div>
+
+  <!-- STEP 5 -->
+  <div id="step5" class="card" style="display:none;">
+    <div class="back-bar">
+      <button class="btn-back" onclick="goBack()">← Back</button>
+      <div class="breadcrumb">Step 4: Topic → <span>Step 5: Options</span></div>
+    </div>
+    <div class="card-hd"><div class="card-ico">⚡</div><div>
+      <div class="card-title">Step 5 — Optimization Options</div>
+      <div class="card-sub">Tick ONLY the options you want included. Unticked options will be completely excluded from the output.</div>
+    </div></div>
+
+    <div id="step5-cat-info" class="doc-info-bar" style="margin-bottom:14px;"></div>
+
+    <div class="sec-label">Optimization Goals — tick what you want included</div>
+    <div class="opt-grid" id="opt-grid"></div>
+
+    <div class="field" style="margin-top:20px;">
+      <label class="label">Additional Instructions <span style="font-size:11px;text-transform:none;font-weight:400;color:var(--text4);">(optional — AI will respond to these directly in the report)</span></label>
+      <textarea id="extra-inst" rows="3" placeholder="e.g. 'Focus on foreign entrepreneurs', 'Promote nominee director service more', 'Add comparison table for Pte Ltd vs LLP', 'Make tone more casual'…"></textarea>
+      <div class="hint">Your instructions will be actioned in the optimized content AND a dedicated response section will appear in the report explaining what was changed.</div>
+    </div>
+
+    <hr class="div">
+    <div class="progress-wrap" id="progress-wrap">
+      <div class="progress-meta"><span id="prog-text">Initializing…</span><span id="prog-pct">0%</span></div>
+      <div class="progress-track"><div class="progress-fill" id="prog-fill"></div></div>
+      <div class="progress-phases">
+        <div class="pph" id="ps-kw">🔍 Keywords</div>
+        <div class="pph" id="ps-serp">📊 SERP</div>
+        <div class="pph" id="ps-audit">🔍 Audit</div>
+        <div class="pph" id="ps-opt">✍️ Rewriting</div>
+        <div class="pph" id="ps-build">📄 Building</div>
+      </div>
+    </div>
+    <button class="btn btn-blue btn-lg btn-full" id="btn-run" onclick="runOpt()">🚀 Start Full SEO Optimization</button>
+  </div>
+
+  <!-- OUTPUT -->
+  <div id="output-section">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+      <div style="font-family:'Playfair Display',serif;font-size:21px;font-weight:900;color:#0d2b6e;">✅ SEO Audit Report Complete</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <span class="rpt-badge added" id="badge-added">+0 Added</span>
+        <span class="rpt-badge removed" id="badge-removed">-0 Removed</span>
+        <span class="rpt-badge score" id="badge-score">Score: –</span>
+        <button class="btn-back" onclick="goBackToStep(5)" style="margin-left:8px;">← Back to Options</button>
+      </div>
+    </div>
+
+    <div style="border:2px solid #e8f0fd;border-radius:14px;overflow:hidden;box-shadow:0 4px 20px rgba(13,43,110,.08);">
+
+      <!-- Nav -->
+      <div class="rpt-nav-bar">
+        <ul>
+          <li><a href="#rpt-score">📈 Score</a></li>
+          <li><a href="#rpt-kw">🔑 Keywords</a></li>
+          <li><a href="#rpt-serp">📊 SERP</a></li>
+          <li><a href="#rpt-audit">🔍 Audit</a></li>
+          <li><a href="#rpt-gap">📋 Gaps</a></li>
+          <li id="changes-nav-li" style="display:none;"><a href="#rpt-changes">📝 Changes</a></li>
+          <li id="inst-nav-li" style="display:none;"><a href="#rpt-inst">💡 Instructions</a></li>
+          <li id="prompts-nav-li" style="display:none;"><a href="#rpt-prompts">🤖 Prompts Used</a></li>
+          <li><a href="#rpt-blog">✏️ Optimized Blog</a></li>
+        </ul>
+      </div>
+
+      <!-- Score dashboard -->
+      <div class="score-dash" id="rpt-score">
+        <div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:rgba(255,255,255,.5);margin-bottom:6px;">Current Score</div>
+          <div class="score-num red" id="sc-before">—</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:4px;">/100</div>
+        </div>
+        <div class="score-bars" id="sc-bars"></div>
+        <div class="score-right">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:rgba(255,255,255,.5);margin-bottom:6px;">Projected Score</div>
+          <div class="sc-after" id="sc-after" style="font-family:'Playfair Display',serif;font-size:56px;font-weight:900;color:#6ee7b7;line-height:1;letter-spacing:-2px;">—</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:4px;">/100</div>
+          <div class="score-highlights" id="sc-highlights"></div>
+        </div>
+      </div>
+
+      <div class="score-metrics" id="sc-metrics"></div>
+
+      <!-- Keywords -->
+      <div class="rpt-section" id="rpt-kw">
+        <div class="rpt-section-title">🔑 Keyword Research</div>
+        <div style="overflow:hidden;border-radius:8px;border:1px solid #dde5f3;">
+          <table class="kw-tbl">
+            <thead><tr><th>Keyword</th><th>Type</th><th>Volume (SG)</th><th>Difficulty</th><th>Intent</th></tr></thead>
+            <tbody id="kw-body"></tbody>
+          </table>
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:#888;">📍 Volume estimates are Singapore-specific (SG market is small; 100-10K is typical)</div>
+      </div>
+
+      <!-- SERP -->
+      <div class="rpt-section" id="rpt-serp">
+        <div class="rpt-section-title">📊 SERP Competitor Analysis — Singapore Market</div>
+        <div id="serp-cards"></div>
+      </div>
+
+      <!-- Audit -->
+      <div class="rpt-section" id="rpt-audit">
+        <div class="rpt-section-title">🔍 On-Page SEO Audit</div>
+        <div class="grid2">
+          <div class="box"><h4>❌ Critical Issues</h4><div id="audit-fail"></div></div>
+          <div class="box"><h4>⚠️ Warnings</h4><div id="audit-warn"></div></div>
+        </div>
+        <div class="box"><h4>✅ Passing Checks</h4><div id="audit-pass"></div></div>
+      </div>
+
+      <!-- Gaps -->
+      <div class="rpt-section" id="rpt-gap">
+        <div class="rpt-section-title">📋 Content Gap Analysis</div>
+        <div class="grid2">
+          <div class="box"><h4>Competitors Cover These Topics</h4><div id="gap-topics"></div></div>
+          <div class="box"><h4>Your Content Is Missing These</h4><div id="gap-missing"></div></div>
+        </div>
+      </div>
+
+      <!-- Changes summary -->
+      <div class="rpt-section" id="rpt-changes" style="display:none;">
+        <div class="rpt-section-title">📝 Changes Summary</div>
+        <div class="grid2">
+          <div class="box"><h4>✅ Content Added (GREEN)</h4><div id="changes-added-list"></div></div>
+          <div class="box"><h4>🗑 Content Removed (RED)</h4><div id="changes-removed-list"></div></div>
+        </div>
+      </div>
+
+      <!-- Instructions response -->
+      <div class="rpt-section" id="rpt-inst" style="display:none;">
+        <div class="rpt-section-title">💡 AI Response to Your Additional Instructions</div>
+        <div class="ai-response-panel" id="inst-content"></div>
+      </div>
+
+      <!-- Prompts Used -->
+      <div class="rpt-section" id="rpt-prompts" style="display:none;">
+        <div class="rpt-section-title">🤖 AI Prompts Used to Generate This Report</div>
+        <div class="alert alert-blue" style="margin-bottom:16px;"><span>ℹ️</span><div>These are the exact instructions sent to the AI. Understanding these helps you know how results were generated and what each section is based on.</div></div>
+        <div id="prompts-content"></div>
+      </div>
+
+      <!-- Optimized Blog -->
+      <div class="rpt-section" id="rpt-blog" style="padding:0;">
+        <div style="padding:22px 28px 0;"><div class="rpt-section-title" style="margin-bottom:14px;">✏️ Fully Optimized Content — Color-Coded Changes</div></div>
+        <div class="blog-out">
+          <div class="blog-legend">
+            <div class="legend-item"><div class="leg-dot" style="background:#0d6e3f;"></div><span style="color:#0d6e3f;">GREEN</span><span style="color:#888;font-weight:400;"> = New content to ADD</span></div>
+            <div class="legend-item"><div class="leg-dot" style="background:#c0392b;"></div><span style="color:#c0392b;">RED Strikethrough</span><span style="color:#888;font-weight:400;"> = Content to REMOVE</span></div>
+            <div class="legend-item"><div class="leg-dot" style="background:#ccc;"></div><span style="color:#666;">Normal/White</span><span style="color:#888;font-weight:400;"> = Keep unchanged</span></div>
+          </div>
+          <div class="blog-body" id="blog-body"></div>
+        </div>
+      </div>
+
+      <!-- Action bar -->
+      <div class="action-bar">
+        <button class="btn btn-green btn-lg" onclick="dlReport()">⬇️ Download Full Report (HTML)</button>
+        <button class="btn btn-outline btn-lg" id="btn-docx" onclick="dlDOCX()">📄 Download Blog (DOCX)</button>
+        <button class="btn btn-ghost" onclick="location.reload()">🔄 Start Over</button>
+        <button class="btn-back" onclick="goBackToStep(5)" style="margin-left:auto;">← Back to Options</button>
+      </div>
+
+    </div>
+  </div>
+
+</main>
+
+<!-- libs -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script>
+// Preload docx library
+(function(){
+  const s=document.createElement('script');
+  s.src='https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js';
+  s.onload=()=>console.log('docx library ready');
+  s.onerror=()=>{
+    const s2=document.createElement('script');
+    s2.src='https://unpkg.com/docx@8.5.0/build/index.js';
+    s2.onload=()=>console.log('docx library ready (fallback)');
+    s2.onerror=()=>console.warn('docx library preload failed — will retry on download');
+    document.head.appendChild(s2);
+  };
+  document.head.appendChild(s);
+})();
+</script>
+<script src="config.js"></script>
+<script src="prompts.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
