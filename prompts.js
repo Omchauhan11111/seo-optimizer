@@ -1,13 +1,12 @@
 /* ══════════════════════════════════════════
-   PROMPT BUILDERS — Dynamic, Context-Aware
-   v3.0 — No country assumptions, doc-driven
+   PROMPT BUILDERS — v4.0
+   Stronger, More Accurate, More Content
 ══════════════════════════════════════════ */
 
 const isSvc = () => S.category === 'services';
 
 /* ─── Extract market/country from URL and doc ─── */
 function detectMarket() {
-  // 1. Try from URL first (most reliable)
   const url = (S.pageUrl || '').toLowerCase();
   if (url.includes('.sg') || url.includes('/sg/') || url.includes('singapore')) return 'Singapore';
   if (url.includes('.my') || url.includes('/my/') || url.includes('malaysia')) return 'Malaysia';
@@ -16,7 +15,6 @@ function detectMarket() {
   if (url.includes('.in') || url.includes('india')) return 'India';
   if (url.includes('.hk') || url.includes('hongkong') || url.includes('hong-kong')) return 'Hong Kong';
 
-  // 2. Try from document text
   const txt = (S.docxText || '').toLowerCase();
   const counts = {
     'Singapore': ['singapore','acra','iras','cpf','sgd','s$','pte ltd','uen ','singpass'].filter(s => txt.includes(s)).length,
@@ -27,12 +25,10 @@ function detectMarket() {
   const best = Object.entries(counts).sort((a,b) => b[1]-a[1])[0];
   if (best && best[1] >= 2) return best[0];
 
-  // 3. Try from topic
   const topic = (S.topic || '').toLowerCase();
   if (topic.includes('singapore')) return 'Singapore';
   if (topic.includes('malaysia')) return 'Malaysia';
 
-  // 4. Fallback — extract from URL domain
   try {
     const domain = new URL(S.pageUrl || 'https://x.com').hostname;
     if (domain.endsWith('.sg')) return 'Singapore';
@@ -41,7 +37,7 @@ function detectMarket() {
     if (domain.endsWith('.in')) return 'India';
   } catch(e) {}
 
-  return 'the target market';
+  return 'Singapore';
 }
 
 /* ─── Extract company/brand from URL ─── */
@@ -53,7 +49,7 @@ function detectBrand() {
 }
 
 /* ─── Doc preview for AI ─── */
-function docPreview(chars = 5000) {
+function docPreview(chars = 6000) {
   if (!S.docxText) return '[No document uploaded]';
   return S.docxText.slice(0, chars);
 }
@@ -71,118 +67,172 @@ function pageType() {
 }
 
 /* ════════════════════════════════
-   KEYWORD PROMPT
+   1. KEYWORD RESEARCH PROMPT
+   Goal: Accurate, document-driven,
+   market-specific keywords only
 ════════════════════════════════ */
 function pKw() {
   const market = detectMarket();
   const wc = docWordCount();
-  return `You are an expert SEO strategist. Analyze the uploaded document and generate ACCURATE, SPECIFIC keywords.
+  return `You are a specialist SEO keyword researcher with deep knowledge of the ${market} market.
 
-DOCUMENT CONTENT (read this carefully — base keywords on actual content):
-=== START ===
-${docPreview(3000)}
-=== END ===
+YOUR TASK: Analyze the document below and extract REAL, ACCURATE keywords that people in ${market} actually search for.
 
-TASK DETAILS:
-- Topic: "${S.topic}"
-- Category: ${catLabel()}
-- Page Type: ${pageType()}
-- Market/Country: ${market}
-- Document Words: ${wc}
-${S.pageUrl ? `- Page URL: ${S.pageUrl}` : ''}
+═══ DOCUMENT CONTENT ═══
+${docPreview(4000)}
+═══ END ═══
 
-KEYWORD RULES:
-1. ALL keywords must be directly relevant to the ACTUAL document content above
-2. Include "${market}" as location modifier where it makes sense
-3. Volume = realistic for ${market} market (most terms: 100-5K/month)
-4. Difficulty = reflect real competition (gov/authority sites often rank = High)
-5. Primary: must match topic "${S.topic}" exactly
-6. Secondary: sub-topics found in the document
-7. LSI: semantically related terms actually used in the document
+TOPIC: "${S.topic}"
+CATEGORY: ${catLabel()}
+PAGE TYPE: ${pageType()}
+MARKET: ${market}
+DOCUMENT WORD COUNT: ${wc}
+${S.pageUrl ? `PAGE URL: ${S.pageUrl}` : ''}
 
-Return ONLY valid JSON — no markdown, no explanation:
-{"keywords":[{"keyword":"...","type":"primary|secondary|lsi","volume":"100-1K","difficulty":"Low|Medium|High","intent":"Informational|Commercial|Transactional"}]}
+STRICT RULES — follow every one:
 
-Generate: 3 primary, 5 secondary, 6 LSI = 14 total.`;
+1. ONLY output keywords directly relevant to the ACTUAL document content above. Do NOT invent keywords not supported by the text.
+2. Every keyword must include "${market}" as a geo-modifier where it makes natural sense (e.g. "company incorporation Singapore", "ACRA registration Singapore").
+3. Volume must be REALISTIC for ${market}. Singapore/HK = small market (most terms 50–2,000/mo). Do NOT write "10K–100K" for niche B2B terms.
+4. Difficulty must reflect ACTUAL competition. Government sites (MOM, ACRA, IRAS, SSM) dominate → "High". Mid-tier guides → "Medium". Long-tail → "Low".
+5. PRIMARY keywords (3): Must exactly match the core intent of "${S.topic}". These are the exact phrases someone types when looking for this topic.
+6. SECONDARY keywords (5): Sub-topics or variations found inside the document. Each must be a real search phrase.
+7. LSI keywords (6): Semantically related terms that appear naturally in the document (e.g. regulatory body names, process steps, official form names).
+8. Intent mapping:
+   - "Informational" = how-to, what-is, guide
+   - "Commercial" = compare, best, review
+   - "Transactional" = hire, buy, register, apply, get quote
+
+Return ONLY valid JSON — no markdown fences, no explanation, no extra text:
+{"keywords":[{"keyword":"exact search phrase","type":"primary|secondary|lsi","volume":"50-500","difficulty":"Low|Medium|High","intent":"Informational|Commercial|Transactional"}]}
+
+Output exactly: 3 primary + 5 secondary + 6 LSI = 14 total keywords.`;
 }
 
 /* ════════════════════════════════
-   SERP PROMPT
+   2. SERP ANALYSIS PROMPT
+   Goal: Realistic competitors,
+   real gaps, actionable data
 ════════════════════════════════ */
 function pSERP() {
   const market = detectMarket();
   const brand = detectBrand();
-  return `You are an SEO expert doing competitor analysis.
+  const tld = market==='Malaysia'?'my':market==='Singapore'?'sg':market==='Australia'?'com.au':market==='India'?'in':'com';
 
-DOCUMENT CONTENT (understand what this page covers):
-=== START ===
-${docPreview(2000)}
-=== END ===
+  return `You are an expert SEO analyst. Your job is to simulate a realistic SERP analysis for "${S.topic}" in ${market}.
 
-TASK DETAILS:
-- Topic: "${S.topic}"
-- Market: ${market}
-- Page Type: ${pageType()}
-${S.pageUrl ? `- Analyzing for: ${S.pageUrl}` : ''}
-- Brand/Site: ${brand}
+DOCUMENT CONTENT (understand what THIS page covers):
+═══ START ═══
+${docPreview(2500)}
+═══ END ═══
 
-Generate REALISTIC competitor analysis for "${S.topic}" in ${market}.
+TOPIC: "${S.topic}"
+MARKET: ${market}
+PAGE TYPE: ${pageType()}
+${S.pageUrl ? `ANALYZING FOR: ${S.pageUrl}` : ''}
+SITE/BRAND: ${brand}
 
-Think about who ACTUALLY ranks for this topic in ${market}:
-- Official/government sites (highest authority)
-- Professional services firms
-- Industry associations
-- News/media sites covering this topic
+THINK CAREFULLY about who ACTUALLY ranks for "${S.topic}" in ${market}:
+- Official government sites: ACRA.gov.sg, MOM.gov.sg, IRAS.gov.sg, SSM.com.my, etc. (ALWAYS rank #1–2 for regulatory topics)
+- Established professional firms: Big 4, top law firms, major accounting firms in ${market}
+- Industry associations & chambers of commerce
+- High-authority news/media: StraitsTimes, BusinessTimes, Channel NewsAsia (SG), TheEdge (MY)
+- Direct competitors similar to ${brand}
 
-RULES:
-- URLs must look realistic for ${market} (use correct country domains like .${market==='Malaysia'?'my':market==='Singapore'?'sg':market==='Australia'?'com.au':'com'})
-- Word counts: gov pages 800-1500w, service pages 600-1000w, guides 1500-3000w
-- content_gaps: SPECIFIC to this page's actual content weaknesses vs competitors
-- recommended_sections: sections competitors have that this page LACKS
+RULES FOR REALISTIC OUTPUT:
+- Competitor URLs must use REAL domain patterns for ${market} (e.g. .${tld} domains, known brand names)
+- Word counts: Government pages 800–1,500w | Service pages 700–1,200w | Comprehensive guides 2,000–4,000w
+- content_gaps must be SPECIFIC to what is MISSING from the document above vs what competitors likely cover
+- recommended_sections must be sections that would genuinely improve this specific page
+- word_count_target: ${isSvc() ? 'Service page = 900–1,100 words' : 'Blog/Guide = 2,500–3,200 words'}
+- Do NOT fabricate completely random URLs — use realistic brand names known in ${market}
 
-Return ONLY valid JSON:
-{"serp_competitors":[{"rank":1,"title":"...","url":"...","word_count":1800,"sections":["Introduction","Services","Benefits","FAQ"],"has_faq":true,"has_table":true,"domain_authority":"High|Medium|Low"}],"top_topics":["key topic competitors cover"],"content_gaps":["specific gap: what's missing from current page vs competitors"],"word_count_target":${isSvc()?850:2600},"recommended_sections":["section name"]}
+Return ONLY valid JSON — no markdown, no explanation:
+{
+  "serp_competitors": [
+    {
+      "rank": 1,
+      "title": "realistic page title",
+      "url": "https://realisticdomain.${tld}/realistic-page/",
+      "word_count": 2200,
+      "sections": ["Introduction", "What is X", "Requirements", "Process Steps", "Costs", "FAQ"],
+      "has_faq": true,
+      "has_table": true,
+      "domain_authority": "High|Medium|Low"
+    }
+  ],
+  "top_topics": [
+    "specific topic competitors cover that's relevant to ${S.topic}"
+  ],
+  "content_gaps": [
+    "SPECIFIC gap: exact thing missing from current page that competitors cover"
+  ],
+  "word_count_target": ${isSvc() ? 1000 : 2800},
+  "recommended_sections": [
+    "Section name: why it's needed"
+  ]
+}
 
-5 competitors. Be specific to "${S.topic}" in ${market}.`;
+Output 5 competitors, 6 top_topics, 6 content_gaps, 5 recommended_sections. Be SPECIFIC to "${S.topic}" in ${market}.`;
 }
 
 /* ════════════════════════════════
-   AUDIT PROMPT
+   3. SEO AUDIT PROMPT
+   Goal: Honest, document-specific,
+   actionable audit findings
 ════════════════════════════════ */
 function pAudit() {
   const wc = docWordCount();
   const market = detectMarket();
-  const scoreBefore = Math.min(55, Math.max(10, Math.round(wc/60)));
-  const scoreAfter  = Math.min(92, scoreBefore + 35);
+  const scoreBefore = Math.min(52, Math.max(8, Math.round(wc/65)));
+  const scoreAfter  = Math.min(90, scoreBefore + 33);
 
-  return `You are a senior SEO content auditor. Read the document below WORD FOR WORD and give an honest audit.
+  return `You are a senior SEO content auditor. Read the ENTIRE document below carefully and produce an HONEST, SPECIFIC audit.
 
-=== DOCUMENT START ===
-${docPreview(4500)}
-=== DOCUMENT END ===
+═══ DOCUMENT — READ EVERY WORD ═══
+${docPreview(5000)}
+═══ END DOCUMENT ═══
 
 AUDIT CONTEXT:
 - Topic: "${S.topic}"
 - Market: ${market}
 - Page Type: ${isSvc() ? 'SERVICE PAGE' : 'BLOG/GUIDE'}
-- Word Count: ${wc} words
+- Current Word Count: ${wc} words
 ${S.pageUrl ? `- URL: ${S.pageUrl}` : ''}
 
-SCORING (BE BRUTALLY HONEST):
-- score_before: actual quality score RIGHT NOW. ${wc < 300 ? 'Very thin content = 10-25.' : wc < 600 ? 'Short content = 20-40.' : wc < 1200 ? 'Medium content = 35-55.' : 'Decent content = 45-65.'}
-- score_after: realistic improvement after optimization. Max +35 points.
-- Base scores on WHAT YOU ACTUALLY SEE — not what could theoretically exist.
+SCORING GUIDE — be brutally honest based on what you actually read:
+- score_before: ${wc < 300 ? 'Very thin content = score 8–20' : wc < 600 ? 'Short content = score 18–35' : wc < 1200 ? 'Medium content = score 32–52' : wc < 2000 ? 'Decent content = score 45–62' : 'Good length but check quality = score 50–68'}
+- score_after: realistic after full optimization. Max +35 points improvement.
+- score_breakdown: score each dimension 0–100 based on WHAT YOU ACTUALLY SEE in the text.
 
-issues_fail: Real critical problems you spotted in the text above
-issues_warn: Minor issues you noticed  
-issues_pass: Things actually done correctly
+issues_fail: CRITICAL problems you found in the text (missing H1, no keywords visible, no structure, outdated data, thin content, no CTA). Be specific — name the actual problem.
+issues_warn: Real warnings based on what you read (keyword appears only once, no internal links, no data sources cited, weak intro).
+issues_pass: Things genuinely done well in the document. Do not fabricate — only list if truly present.
 
 Return ONLY valid JSON:
-{"score_before":${scoreBefore},"score_after":${scoreAfter},"word_count_before":${wc},"word_count_after":${isSvc()?850:2600},"score_breakdown":{"Content Depth":${Math.min(60,Math.round(wc/20))},"Keyword Usage":25,"Content Freshness":30,"Structure / UX":35,"E-E-A-T Signals":20,"CTA / Conversion":15},"issues_fail":[{"label":"...","detail":"specific issue found in the actual text"}],"issues_warn":[{"label":"...","detail":"..."}],"issues_pass":[{"label":"...","detail":"..."}]}`;
+{
+  "score_before": ${scoreBefore},
+  "score_after": ${scoreAfter},
+  "word_count_before": ${wc},
+  "word_count_after": ${isSvc() ? 1000 : 2800},
+  "score_breakdown": {
+    "Content Depth": 0,
+    "Keyword Usage": 0,
+    "Content Freshness": 0,
+    "Structure / UX": 0,
+    "E-E-A-T Signals": 0,
+    "CTA / Conversion": 0
+  },
+  "issues_fail": [{"label": "specific issue name", "detail": "exactly what is wrong and where"}],
+  "issues_warn": [{"label": "warning name", "detail": "specific detail"}],
+  "issues_pass": [{"label": "what's good", "detail": "specific detail of what works"}]
+}`;
 }
 
 /* ════════════════════════════════
-   OPTIMIZATION PROMPT
+   4. FINAL OPTIMIZATION PROMPT
+   Goal: Maximum content, accurate,
+   specific, deeply detailed output
 ════════════════════════════════ */
 function pOpt(kw, serp, audit) {
   const checkedOpts = getOpts();
@@ -193,123 +243,288 @@ function pOpt(kw, serp, audit) {
   const year = new Date().getFullYear();
   const wc = docWordCount();
 
-  /* Build site base URL for internal links */
   let siteBase = '';
   try { siteBase = new URL(S.pageUrl || '').origin; } catch(e) {}
 
-  /* Rules for each checked option */
+  /* Per-option detailed rules */
   const optRules = [];
+
   if (checkedOpts.includes('keywords'))
-    optRules.push(`KEYWORDS: Naturally weave researched keywords into content. Primary keyword in H1 and first H2. Secondary in body H2s. LSI throughout paragraphs. Target keyword density 1-2%.`);
+    optRules.push(`KEYWORD INTEGRATION — MANDATORY:
+• Primary keyword must appear in: H1, first paragraph (within first 50 words), at least 2 H2s, meta title.
+• Secondary keywords: each must appear at least once in a H2 or body paragraph.
+• LSI keywords: spread naturally throughout — minimum 1 per 300 words.
+• Target density: 1–2% for primary keyword. NEVER stuff. Read naturally.
+• Bold the primary keyword on FIRST occurrence in the body.`);
+
   if (checkedOpts.includes('meta'))
-    optRules.push(`META: Write meta_title (max 60 chars, include primary keyword + "${market}") and meta_description (150-160 chars, action-oriented, include a benefit).`);
+    optRules.push(`META TAGS — MANDATORY:
+• meta_title: Exactly 50–60 characters. Format: [Primary Keyword] in ${market} | [Brand] OR [Year] [Primary Keyword] Guide | [Brand]. MUST include primary keyword near the start.
+• meta_description: Exactly 145–158 characters. Start with an action verb. Include primary keyword, a specific benefit, and a soft CTA (e.g. "Learn more", "Get started"). Never truncate mid-sentence.`);
+
   if (checkedOpts.includes('headings'))
-    optRules.push(`HEADINGS: Strict H1 > H2 > H3 hierarchy. ONE H1 only. Each H2 covers a distinct subtopic. Include keywords naturally in headings.`);
+    optRules.push(`HEADING STRUCTURE — MANDATORY:
+• EXACTLY one H1 — the main page title, contains primary keyword.
+• H2s: minimum 5 for blog, minimum 3 for service page. Each covers a distinct subtopic. Include secondary keywords.
+• H3s: sub-sections under H2s. Use for steps, features, sub-services.
+• H4s: optional deep sub-sections or FAQ questions.
+• NO heading should be a duplicate. NO heading should be a single word.`);
+
   if (checkedOpts.includes('toc') && !isSv)
-    optRules.push(`TABLE OF CONTENTS: Add immediately after H1:\n<div class="toc-box"><h4>📋 Table of Contents</h4><ol><li><a href="#section1">Section Name</a></li>...</ol></div>`);
+    optRules.push(`TABLE OF CONTENTS — MANDATORY for blog/guide:
+Place immediately after H1 and intro paragraph. List ALL H2 sections with anchor links.
+Format:
+<div class="toc-box">
+  <h4>📋 Table of Contents</h4>
+  <ol>
+    <li><a href="#section-id">Section Title</a></li>
+    <!-- one entry per H2 -->
+  </ol>
+</div>
+Add id="section-id" to each corresponding H2 tag.`);
+
   if (checkedOpts.includes('freshness'))
-    optRules.push(`FRESHNESS: Update all stats, fees, thresholds to ${year}. Verify all regulatory figures are current for ${market}. Add "${year}" to relevant headings.`);
+    optRules.push(`CONTENT FRESHNESS — MANDATORY:
+• Replace ALL year references with ${year} where relevant.
+• Update any fee/cost figures to current ${year} rates (ACRA fees, MOM fees, government charges, etc.).
+• Add "Updated ${year}" badge in meta strip or intro.
+• Replace phrases like "recently" or "in recent years" with specific "${year}" references.
+• Verify all regulatory body names and processes are current.`);
+
   if (checkedOpts.includes('serp'))
-    optRules.push(`SERP GAPS: Add the missing sections identified in SERP analysis. Cover topics competitors rank for that this page currently misses.`);
+    optRules.push(`SERP GAP COVERAGE — MANDATORY:
+Based on the SERP analysis provided, add EVERY missing section that competitors rank for. These must be FULLY WRITTEN new sections — not placeholder headings. Each gap section needs minimum 150 words with real, specific content.`);
+
   if (checkedOpts.includes('faq') && !isSv)
-    optRules.push(`FAQ SECTION: Add at end with minimum 6 Q&As relevant to "${S.topic}":\n<div class="faq-item"><div class="faq-q">Question?</div><div class="faq-a">Detailed answer...</div></div>`);
+    optRules.push(`FAQ SECTION — MANDATORY:
+Add minimum 7 FAQs at the end. Questions must be REAL queries people search (use keyword data). Answers must be detailed — minimum 3 sentences each, specific to ${market}.
+Format each FAQ:
+<div class="faq-item">
+  <div class="faq-q">What is the exact question someone would search?</div>
+  <div class="faq-a">Detailed, specific answer with accurate ${market} information. Include official body names, real figures, step-by-step if needed. Minimum 3 sentences.</div>
+</div>`);
+
   if (checkedOpts.includes('cta'))
-    optRules.push(`CTAs: Add MINIMUM 3 CTA boxes throughout content using class "tool-cta". Space them: after intro, mid-content, end. Make them action-oriented with specific benefit.`);
+    optRules.push(`CTAs — MANDATORY:
+Add exactly 3 CTA boxes: (1) After intro section, (2) After the midpoint H2, (3) At page end.
+Each CTA must be unique — different headline, different benefit statement, different button text.
+Use class "tool-cta" for inline CTAs, "bottom-cta" for final CTA.
+Make CTAs specific to the service/topic — NOT generic "Contact us".`);
+
   if (checkedOpts.includes('eeat'))
-    optRules.push(`E-E-A-T: Add specific credentials, cite official ${market} regulations by name, include statistics with sources, mention years of experience, certifications.`);
+    optRules.push(`E-E-A-T SIGNALS — MANDATORY:
+• Cite real ${market} regulatory bodies by official name (e.g. ACRA, IRAS, MOM, SSM, LHDN).
+• Reference specific official acts, regulations, or guidelines by name.
+• Add specific statistics with source attribution (even if estimated — label it).
+• Include trust indicators: years the company has operated, number of clients, awards, certifications.
+• Add author expertise signals in intro (e.g. "Our team of licensed professionals with X years...").`);
+
   if (checkedOpts.includes('schema'))
-    optRules.push(`SCHEMA: Add JSON-LD at bottom:\n<script type="application/ld+json">{ "@context":"https://schema.org", "@type":"${isSv?'Service':'Article'}", ... }</script>`);
+    optRules.push(`SCHEMA MARKUP:
+Add at the very end of optimized_html:
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "${isSv ? 'Service' : 'Article'}",
+  "name": "[page title]",
+  "description": "[meta description]",
+  "provider": {"@type": "Organization", "name": "${brand}"}
+}
+</script>`);
+
   if (checkedOpts.includes('interlinking') && isSv)
-    optRules.push(`INTERNAL LINKS (CRITICAL FOR SERVICE PAGES): Add MINIMUM 8 internal links throughout content. Use natural anchor text. Link to related services, blog posts, guides.${siteBase ? ` Base URL: ${siteBase}` : ''} Format: <a href="${siteBase}/relevant-page/">anchor text</a>. Place links where they add value — inside paragraphs, in a "Related Services" section, and in CTAs.`);
+    optRules.push(`INTERNAL LINKS — CRITICAL FOR SERVICE PAGES:
+Add MINIMUM 10 internal links. Spread them naturally — do NOT dump all at end.
+• 3–4 links inside body paragraphs (anchor text = keyword-rich)
+• 2–3 links in a dedicated "Related Services" section
+• 2 links inside CTA boxes
+• 1–2 links in FAQ answers
+${siteBase ? `Base URL: ${siteBase}` : ''}
+Format: <a href="${siteBase || 'https://yoursite.com'}/relevant-page-slug/">descriptive anchor text</a>
+Each anchor text must be descriptive and different — NOT "click here" or "read more".`);
+
   if (checkedOpts.includes('service_promo') && isSv)
-    optRules.push(`SERVICE PROMOTION: Add a dedicated "Why Choose ${brand.charAt(0).toUpperCase()+brand.slice(1)}" section. Highlight unique value propositions, what makes the service different, specific benefits the client gets.`);
+    optRules.push(`SERVICE PROMOTION — MANDATORY:
+Add a "Why Choose ${brand.charAt(0).toUpperCase()+brand.slice(1)}" section with MINIMUM 6 specific differentiators. Each differentiator needs:
+• A bold heading (what makes it special)
+• 2–3 sentences explaining the specific benefit to the client
+• A concrete claim (years, numbers, stats, guarantees)`);
+
   if (checkedOpts.includes('service_explain') && isSv)
-    optRules.push(`SUB-SERVICES: Give each service/feature its OWN H3 heading with 2-3 sentences explaining: what it is, what's included, the benefit to client.`);
+    optRules.push(`SUB-SERVICE BREAKDOWN — MANDATORY:
+For EACH sub-service or feature, create an H3 section containing:
+• What exactly is included in this sub-service
+• Who needs it and why
+• The specific benefit/outcome the client gets
+• Any relevant ${market} regulatory context
+Minimum 100 words per sub-service section.`);
+
   if (checkedOpts.includes('readability'))
-    optRules.push(`READABILITY: Max 20 words per sentence. Use bullet lists for 3+ items. Short paragraphs (3-4 sentences max). Use bold for key terms. Add subheadings every 150-200 words.`);
+    optRules.push(`READABILITY — MANDATORY:
+• Maximum sentence length: 22 words. Split longer sentences.
+• Paragraph max: 4 sentences. Add line break after every paragraph.
+• Use bullet lists for any group of 3+ items.
+• Bold key terms on first use. Bold important numbers and facts.
+• Add a subheading (H3 or H4) every 200 words in long sections.
+• Use transition phrases between sections ("Now that you understand X, let's look at Y...").`);
+
   if (checkedOpts.includes('images'))
-    optRules.push(`IMAGE SUGGESTIONS: Add <!-- Image: [specific alt text description] --> comments at 3-4 visual break points.`);
+    optRules.push(`IMAGE PLACEHOLDERS:
+Add <!-- IMAGE: [exact alt text description] --> comments at 4 strategic locations:
+1. After H1 (hero image — describe the scene/infographic)
+2. Before a key process/steps section (diagram or flowchart idea)
+3. Inside a comparison table section (screenshot or chart idea)
+4. Near FAQ or conclusion (team photo or office/credentials)`);
+
   if (checkedOpts.includes('pricing') && isSv)
-    optRules.push(`PRICING: Add a pricing section or table. If exact prices aren't known, use "Starting from..." or "Contact us for a quote" with what's included at each tier.`);
+    optRules.push(`PRICING SECTION — MANDATORY:
+Add a clear pricing section with an HTML table. Include:
+• Package/tier names
+• What's included in each
+• Price range (if known) OR "From SGD/MYR X" OR "Custom quote"
+• A note on what factors affect pricing
+• A CTA to request a quote`);
+
   if (checkedOpts.includes('trust_signals') && isSv)
-    optRules.push(`TRUST SIGNALS: Add specific trust elements: years established, number of clients served, certifications/memberships, awards. Make them specific and verifiable.`);
+    optRules.push(`TRUST SIGNALS — MANDATORY:
+Add a dedicated trust section with REAL, SPECIFIC claims:
+• How many years the firm has been operating
+• Approximate number of clients or incorporations handled
+• Professional memberships (ICPAS, ISCA, Law Society, etc.)
+• Awards or recognition (if known)
+• Regulatory compliance (PDPA, MAS-regulated, etc.)
+Use <div class="adv-grid"> cards for visual presentation.`);
 
+  /* ── Content volume & structure targets ── */
   const contentTarget = isSv
-    ? `SERVICE PAGE CONTENT TARGET:
-- MINIMUM 800 words, ideally 900-1000 words. DO NOT produce less than 800 words.
-- Structure: Intro (100w) → What We Offer (200w) → Each Sub-Service with H3 (300w) → Why Choose Us (150w) → CTA sections
-- NO Table of Contents on service pages
-- Every H3 sub-service section needs: what it is + what's included + client benefit`
-    : `BLOG/GUIDE CONTENT TARGET:
-- MINIMUM 2200 words, ideally 2500-2800 words. DO NOT produce less than 2200 words.
-- Structure: Intro → TOC → Multiple H2 sections (400-500w each) → Comparison table → FAQ → Conclusion
-- Must include at least ONE HTML comparison <table>
-- Comprehensive coverage — answer every question a reader might have`;
+    ? `═══ SERVICE PAGE — MANDATORY CONTENT REQUIREMENTS ═══
 
-  const colorRules = `COLOR-CODING RULES (follow exactly):
-- <div class="new-block">NEW CONTENT</div> = content you're ADDING (shown GREEN)
-- <div class="remove-block">OLD CONTENT</div> = content to DELETE (shown RED strikethrough)  
-- Content with NO wrapper = existing content KEPT AS-IS (shown white/normal)
-- <span class="new-inline">word</span> = inline addition
-- <span class="remove-inline">word</span> = inline deletion
+MINIMUM LENGTH: 1,000 words. IDEAL: 1,100–1,300 words. DO NOT output less than 1,000 words under any circumstance.
 
-IMPORTANT: Most content should be unwrapped (kept). Only genuinely new additions get new-block. Only deletions get remove-block. Do NOT wrap everything in new-block.`;
+REQUIRED STRUCTURE (follow in order):
+1. H1 — Keyword-rich page title [1 heading]
+2. Intro paragraph — 80–100 words. Hook + what the service does + who it's for. Bold the primary keyword.
+3. "What We Offer" H2 — Overview of all sub-services (150–200 words)
+4. Individual Sub-Service H3s — ONE H3 per sub-service, 100–150 words each. Minimum 4 sub-services.
+5. CTA Box #1 — Mid-page conversion
+6. "Why Choose ${brand.charAt(0).toUpperCase()+brand.slice(1)}" H2 — 6 differentiators, 200–250 words
+7. Process / How It Works H2 — Step-by-step numbered list (5–7 steps), 150–200 words
+8. Pricing H2 (if pricing option checked) — table format
+9. CTA Box #2
+10. FAQ H2 — minimum 5 Q&As specific to this service in ${market}
+11. CTA Box #3 / Bottom CTA
+
+ABSOLUTE RULES:
+• NO Table of Contents on service pages
+• Every section must be FULLY written — no placeholder text
+• Every H3 must have real, specific content about that sub-service`
+
+    : `═══ BLOG/GUIDE — MANDATORY CONTENT REQUIREMENTS ═══
+
+MINIMUM LENGTH: 2,800 words. IDEAL: 3,000–3,500 words. DO NOT output less than 2,800 words under any circumstance.
+
+REQUIRED STRUCTURE (follow in order):
+1. H1 — Keyword-rich, compelling title [1 heading]
+2. Meta strip — <div class="meta-strip"> with author, date badge "${year}", reading time
+3. Intro — 150–200 words. State EXACTLY what the reader will learn. Include primary keyword in first 50 words. Bold key phrase.
+4. TOC Box — linked table of contents for all H2s
+5. CTA Box #1 — after intro
+6. H2 Section 1: Background/Overview — 300–400 words, include one callout box with key fact
+7. H2 Section 2: Requirements/Eligibility/Types — 300–400 words, include bullet list of requirements
+8. H2 Section 3: Step-by-Step Process — 350–450 words, use <ol class="steps"> numbered list
+9. H2 Section 4: Costs/Fees/Timeline — 250–350 words, MUST include HTML comparison <table>
+10. H2 Section 5: Key Considerations/Common Mistakes — 250–300 words
+11. CTA Box #2 — mid-content
+12. H2 Section 6: [Topic]-Specific Section from SERP gaps — 250–350 words
+13. H2 Section 7: Comparison or Advanced Tips — 200–300 words, use <div class="adv-grid"> cards
+14. FAQ Section — minimum 7 FAQs, 3+ sentences each
+15. H2 Conclusion — 150–200 words, summarize key points, link to related guides
+16. Bottom CTA
+
+ABSOLUTE RULES:
+• EVERY section must be FULLY written — 0 placeholder text allowed
+• At least 2 HTML tables (comparison/cost/timeline data)
+• At least 1 callout box (<div class="callout callout-blue"> or callout-green)
+• At least 1 adv-grid cards section
+• All ${market} facts, fees, regulatory references must be accurate as of ${year}
+• Minimum 7 FAQs with 3+ sentence answers each`;
+
+  /* ── Color coding rules ── */
+  const colorRules = `═══ COLOR-CODING RULES — FOLLOW EXACTLY ═══
+
+The output shows changes vs the original document:
+• <div class="new-block"> ... </div> → Content you are ADDING (renders GREEN)
+• <div class="remove-block"> ... </div> → Existing content to DELETE (renders RED with strikethrough)
+• Content with NO wrapper → Existing content KEPT AS-IS (renders normal/white)
+• <span class="new-inline">word</span> → Single inline addition within kept paragraph
+• <span class="remove-inline">word</span> → Single inline deletion within kept paragraph
+
+CRITICAL: Most content should be unwrapped (kept as-is). Only wrap:
+- Genuinely NEW sections you are adding → new-block
+- Content from original that should be DELETED → remove-block
+Do NOT wrap everything in new-block. Do NOT wrap kept content.`;
 
   const instBlock = extra
-    ? `\nUSER ADDITIONAL INSTRUCTIONS (MANDATORY — must action all of these):\n"${extra}"\n\nAction every instruction above AND add "instructions_response" to JSON explaining what you changed.`
+    ? `\n═══ USER ADDITIONAL INSTRUCTIONS — MANDATORY ═══\n"${extra}"\n\nYou MUST action every instruction above. Add "instructions_response" to JSON output explaining point-by-point what you changed for each instruction.`
     : '';
 
-  return `You are a senior SEO content strategist. Produce a COMPLETE, THOROUGH optimization of the document below.
+  return `You are a world-class SEO content strategist specialising in ${market} business content. Your job is to produce the MOST COMPLETE, ACCURATE, and USEFUL optimization of the document below.
 
-═══ ORIGINAL DOCUMENT ═══
-${docPreview(5500)}
-═══ END DOCUMENT ═══
+═══ ORIGINAL DOCUMENT — READ IN FULL ═══
+${docPreview(6000)}
+═══ END ORIGINAL DOCUMENT ═══
 
-CONTEXT:
+OPTIMIZATION CONTEXT:
 - Topic: "${S.topic}"
 - Category: ${S.category} → ${isSv ? 'SERVICE PAGE' : 'BLOG/GUIDE'}
 - Market: ${market}
 - Brand/Site: ${brand}${siteBase ? ` (${siteBase})` : ''}
 - Year: ${year}
+- Original Word Count: ${wc} words
 ${S.pageUrl ? `- Page URL: ${S.pageUrl}` : ''}
 
-KEYWORD DATA:
+═══ KEYWORD DATA (use these throughout) ═══
 ${kw}
 
-SERP ANALYSIS:
+═══ SERP ANALYSIS (fill these content gaps) ═══
 ${serp}
 
-SEO AUDIT:
+═══ SEO AUDIT (fix every issue listed) ═══
 ${audit}
 
-CHECKED OPTIMIZATION GOALS — apply EVERY one of these:
-${checkedOpts.length ? checkedOpts.join(', ') : 'general optimization'}
+═══ CHECKED OPTIMIZATION GOALS — APPLY ALL ═══
+${checkedOpts.length ? checkedOpts.join(', ') : 'full general optimization'}
 
-DETAILED RULES FOR EACH GOAL:
-${optRules.length ? optRules.join('\n\n') : 'Apply general SEO best practices.'}
+═══ DETAILED RULES PER GOAL ═══
+${optRules.length ? optRules.join('\n\n') : 'Apply all SEO best practices at maximum quality.'}
 
 ${contentTarget}
 
 ${colorRules}
 
-QUALITY NON-NEGOTIABLES:
-- Write professional, natural English — no keyword stuffing
-- All data must be accurate for ${market} as of ${year}
-- Internal links must use real URL patterns from the actual site${siteBase ? ` (${siteBase})` : ''}
-- Do NOT repeat the same keyword more than 3× in close proximity
-- Content must genuinely help the reader — not just tick SEO boxes
-- optimized_html must be COMPLETE — include the FULL page content, not excerpts
 ${instBlock}
 
-OUTPUT — Return ONLY valid JSON, absolutely no markdown code fences:
+═══ NON-NEGOTIABLE QUALITY STANDARDS ═══
+1. optimized_html MUST contain the COMPLETE page — every section fully written. No "..." or placeholder text. No truncation.
+2. All ${market} facts, government body names, fee amounts, regulatory references must be ACCURATE as of ${year}.
+3. Internal links must use real URL patterns from ${siteBase || 'the actual site domain'}.
+4. Primary keyword must NOT appear more than once per 150 words (avoid stuffing).
+5. Every paragraph must add genuine value to the reader — not just repeat other paragraphs.
+6. Sentences must flow naturally. Read it back — would a real professional be proud of this?
+7. changes_added must list EVERY major change with a specific SEO reason.
+8. The output content should be so thorough and helpful that a reader has NO reason to visit a competitor page.
+
+FINAL INSTRUCTION: Write as if you are the best SEO copywriter in ${market}. The content must be the single most useful, accurate, and complete resource on "${S.topic}" available online.
+
+Return ONLY valid JSON — absolutely no markdown fences, no preamble, no explanation:
 {
-  "meta_title": "max 60 chars, primary keyword + ${market}",
-  "meta_description": "150-160 chars, benefit-focused",
-  "url_slug": "/url-slug/",
-  "h1": "primary H1 heading",
-  "optimized_html": "THE COMPLETE OPTIMIZED HTML — full page, all sections, color-coded",
-  "changes_added": [{"title":"what was added","detail":"SEO reason"}],
-  "changes_removed": [{"title":"what removed","detail":"why removed"}]${extra ? `,\n  "instructions_response": "detailed explanation of what you changed per user instructions"` : ''}
+  "meta_title": "50–60 chars — primary keyword near start + ${market}",
+  "meta_description": "145–158 chars — action verb start, primary keyword, specific benefit, soft CTA",
+  "url_slug": "/seo-optimized-url-slug/",
+  "h1": "compelling H1 with primary keyword",
+  "optimized_html": "THE COMPLETE OPTIMIZED HTML PAGE — all sections fully written, color-coded, minimum ${isSv ? 1000 : 2800} words",
+  "changes_added": [{"title": "what was added", "detail": "specific SEO/content reason this improves the page"}],
+  "changes_removed": [{"title": "what was removed", "detail": "why it was removed or replaced"}]${extra ? `,\n  "instructions_response": "point-by-point explanation of every change made per user instructions"` : ''}
 }`;
 }
 
