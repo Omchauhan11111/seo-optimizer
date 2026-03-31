@@ -359,3 +359,14 @@ hr.div{border:none;border-top:1px solid var(--border);margin:20px 0;}
   .page{padding:14px 10px 60px;}
   .stepper{display:none;}
 }
+
+/* ── Prompt Editor Panel ── */
+.prompt-preview-item{background:#fff;border:1.5px solid #dde5f3;border-radius:8px;padding:12px 14px;margin-bottom:10px;}
+.prompt-preview-item:last-child{margin-bottom:0;}
+.pp-header{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;}
+.pp-label{font-size:12px;font-weight:700;color:#0d2b6e;flex:1;}
+.btn-edit-prompt{padding:4px 12px;background:#e8f0fd;border:1.5px solid #b8ccf5;border-radius:6px;font-size:11px;font-weight:700;color:#0d2b6e;cursor:pointer;transition:background .15s;}
+.btn-edit-prompt:hover{background:#c8dcff;}
+.btn-reset-prompt{padding:4px 10px;background:#fdeaea;border:1.5px solid #f5b8b8;border-radius:6px;font-size:11px;font-weight:600;color:#c0392b;cursor:pointer;}
+.pp-preview{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#666;line-height:1.5;background:#f8f9fa;border-radius:5px;padding:8px 10px;white-space:pre-wrap;max-height:56px;overflow:hidden;}
+.btn-sm{font-size:12px;padding:6px 14px;}
