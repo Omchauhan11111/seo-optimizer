@@ -1,223 +1,401 @@
 /* ══════════════════════════════════════════
-   PROMPT BUILDERS
-   All prompts used for AI calls
+   PROMPT BUILDERS — Dynamic, Context-Aware
+   v3.0 — No country assumptions, doc-driven
 ══════════════════════════════════════════ */
 
-const isSvc=()=>S.category==='services';
+const isSvc = () => S.category === 'services';
 
-function pKw(){
-  const catLabel = {
-    incorporation: 'Company Incorporation / Registration',
-    resources: 'Resources / Guides / Compliance',
-    services: 'Professional Services (Accounting / Legal / HR)',
-    blogs: 'Blog / Informational Content'
-  }[S.category] || S.category;
+/* ─── Extract market/country from URL and doc ─── */
+function detectMarket() {
+  // 1. Try from URL first (most reliable)
+  const url = (S.pageUrl || '').toLowerCase();
+  if (url.includes('.sg') || url.includes('/sg/') || url.includes('singapore')) return 'Singapore';
+  if (url.includes('.my') || url.includes('/my/') || url.includes('malaysia')) return 'Malaysia';
+  if (url.includes('.au') || url.includes('australia')) return 'Australia';
+  if (url.includes('.uk') || url.includes('.co.uk') || url.includes('united-kingdom')) return 'United Kingdom';
+  if (url.includes('.in') || url.includes('india')) return 'India';
+  if (url.includes('.hk') || url.includes('hongkong') || url.includes('hong-kong')) return 'Hong Kong';
 
-  return `You are an expert SEO strategist for 3E Accounting Singapore (3ecpa.com.sg), a professional services firm.
-Topic: "${S.topic}"
-Category: ${catLabel}
-${isSvc()
-  ? 'PAGE TYPE: SERVICE PAGE — Focus ONLY on commercial/transactional keywords. People searching to hire or buy a service.'
-  : 'PAGE TYPE: BLOG/GUIDE — Focus on informational + commercial-investigation keywords. People researching a topic.'}
+  // 2. Try from document text
+  const txt = (S.docxText || '').toLowerCase();
+  const counts = {
+    'Singapore': ['singapore','acra','iras','cpf','sgd','s$','pte ltd','uen ','singpass'].filter(s => txt.includes(s)).length,
+    'Malaysia':  ['malaysia','malaysian','ringgit','rm ','bursa','ssm ','sdn bhd','lembaga'].filter(s => txt.includes(s)).length,
+    'Australia': ['australia','australian','ato ','abn ','acn ','aud '].filter(s => txt.includes(s)).length,
+    'India':     ['india','indian','rupee','inr ','gst india','pan card','aadhaar'].filter(s => txt.includes(s)).length,
+  };
+  const best = Object.entries(counts).sort((a,b) => b[1]-a[1])[0];
+  if (best && best[1] >= 2) return best[0];
 
-CRITICAL RULES for accuracy:
-- Keywords MUST be SPECIFIC to Singapore market (add "Singapore" suffix where needed)
-- Volume estimates must be REALISTIC for a small country (1K-10K is typical max for SG; most terms are 100-1K)
-- Difficulty must reflect actual competition (government/bank sites rank for these, so "High" is common)
-- Do NOT generate generic global keywords — these must be Singapore-specific search terms people actually type
-- LSI keywords should be semantically related terms, not just synonyms
+  // 3. Try from topic
+  const topic = (S.topic || '').toLowerCase();
+  if (topic.includes('singapore')) return 'Singapore';
+  if (topic.includes('malaysia')) return 'Malaysia';
 
-Return ONLY valid JSON (no markdown, no explanation):
+  // 4. Fallback — extract from URL domain
+  try {
+    const domain = new URL(S.pageUrl || 'https://x.com').hostname;
+    if (domain.endsWith('.sg')) return 'Singapore';
+    if (domain.endsWith('.my')) return 'Malaysia';
+    if (domain.endsWith('.au')) return 'Australia';
+    if (domain.endsWith('.in')) return 'India';
+  } catch(e) {}
+
+  return 'the target market';
+}
+
+/* ─── Extract company/brand from URL ─── */
+function detectBrand() {
+  try {
+    const domain = new URL(S.pageUrl || '').hostname.replace('www.','');
+    return domain.split('.')[0] || 'the company';
+  } catch(e) { return 'the company'; }
+}
+
+/* ─── Doc preview for AI ─── */
+function docPreview(chars = 5000) {
+  if (!S.docxText) return '[No document uploaded]';
+  return S.docxText.slice(0, chars);
+}
+
+function docWordCount() {
+  return S.docxText ? S.docxText.split(/\s+/).filter(Boolean).length : 0;
+}
+
+function catLabel() {
+  return { incorporation:'Company Incorporation/Registration', resources:'Resources/Guides/Compliance', services:'Professional Services', blogs:'Blog/Informational Content' }[S.category] || S.category;
+}
+
+function pageType() {
+  return isSvc() ? 'SERVICE PAGE (commercial/transactional — people want to hire or buy)' : 'BLOG/GUIDE (informational + research intent)';
+}
+
+/* ════════════════════════════════
+   KEYWORD PROMPT
+════════════════════════════════ */
+function pKw() {
+  const market = detectMarket();
+  const wc = docWordCount();
+  return `You are an expert SEO strategist. Analyze the uploaded document and generate ACCURATE, SPECIFIC keywords.
+
+DOCUMENT CONTENT (read this carefully — base keywords on actual content):
+=== START ===
+${docPreview(3000)}
+=== END ===
+
+TASK DETAILS:
+- Topic: "${S.topic}"
+- Category: ${catLabel()}
+- Page Type: ${pageType()}
+- Market/Country: ${market}
+- Document Words: ${wc}
+${S.pageUrl ? `- Page URL: ${S.pageUrl}` : ''}
+
+KEYWORD RULES:
+1. ALL keywords must be directly relevant to the ACTUAL document content above
+2. Include "${market}" as location modifier where it makes sense
+3. Volume = realistic for ${market} market (most terms: 100-5K/month)
+4. Difficulty = reflect real competition (gov/authority sites often rank = High)
+5. Primary: must match topic "${S.topic}" exactly
+6. Secondary: sub-topics found in the document
+7. LSI: semantically related terms actually used in the document
+
+Return ONLY valid JSON — no markdown, no explanation:
 {"keywords":[{"keyword":"...","type":"primary|secondary|lsi","volume":"100-1K","difficulty":"Low|Medium|High","intent":"Informational|Commercial|Transactional"}]}
 
-Generate: 3 primary, 5 secondary, 6 LSI. Total = 14 keywords. Singapore 2026 context.`;
+Generate: 3 primary, 5 secondary, 6 LSI = 14 total.`;
 }
 
-function pSERP(){
-  const catLabel = {
-    incorporation: 'company incorporation Singapore',
-    resources: 'business guide Singapore',
-    services: 'professional services Singapore',
-    blogs: 'business blog Singapore'
-  }[S.category] || S.category;
+/* ════════════════════════════════
+   SERP PROMPT
+════════════════════════════════ */
+function pSERP() {
+  const market = detectMarket();
+  const brand = detectBrand();
+  return `You are an SEO expert doing competitor analysis.
 
-  return `You are an SEO expert for 3E Accounting Singapore (3ecpa.com.sg).
-Topic: "${S.topic}"
-Category: ${S.category}
-Search Context: This is a Singapore B2B professional services market.
+DOCUMENT CONTENT (understand what this page covers):
+=== START ===
+${docPreview(2000)}
+=== END ===
 
-Generate REALISTIC competitor data for Singapore market. Common top-ranking sites include:
-- gov.sg / acra.gov.sg / iras.gov.sg (government — always rank #1-3 for compliance topics)
-- singaporelegaladvice.com, singaporebizsetup.com, 3ecpa.com.sg itself, osome.com, sleek.com, boardroom.com.sg
+TASK DETAILS:
+- Topic: "${S.topic}"
+- Market: ${market}
+- Page Type: ${pageType()}
+${S.pageUrl ? `- Analyzing for: ${S.pageUrl}` : ''}
+- Brand/Site: ${brand}
 
-IMPORTANT:
-- Word counts should reflect REAL page lengths (government pages: 800-1500w, commercial guides: 1500-3500w)
-- has_faq and has_table should reflect what these types of pages ACTUALLY have
-- content_gaps must be specific to the topic "${S.topic}" — not generic SEO advice
-- word_count_target for services = 700-900, for blogs/guides = 2000-3000
+Generate REALISTIC competitor analysis for "${S.topic}" in ${market}.
+
+Think about who ACTUALLY ranks for this topic in ${market}:
+- Official/government sites (highest authority)
+- Professional services firms
+- Industry associations
+- News/media sites covering this topic
+
+RULES:
+- URLs must look realistic for ${market} (use correct country domains like .${market==='Malaysia'?'my':market==='Singapore'?'sg':market==='Australia'?'com.au':'com'})
+- Word counts: gov pages 800-1500w, service pages 600-1000w, guides 1500-3000w
+- content_gaps: SPECIFIC to this page's actual content weaknesses vs competitors
+- recommended_sections: sections competitors have that this page LACKS
 
 Return ONLY valid JSON:
-{"serp_competitors":[{"rank":1,"title":"...","url":"...","word_count":1800,"sections":["Overview","Requirements","Process","Fees","FAQ"],"has_faq":true,"has_table":true,"domain_authority":"High|Medium"}],"top_topics":["topic covered by competitors"],"content_gaps":["specific thing missing from current content"],"word_count_target":${isSvc()?800:2500},"recommended_sections":["section name"]}
+{"serp_competitors":[{"rank":1,"title":"...","url":"...","word_count":1800,"sections":["Introduction","Services","Benefits","FAQ"],"has_faq":true,"has_table":true,"domain_authority":"High|Medium|Low"}],"top_topics":["key topic competitors cover"],"content_gaps":["specific gap: what's missing from current page vs competitors"],"word_count_target":${isSvc()?850:2600},"recommended_sections":["section name"]}
 
-5 realistic Singapore market competitors. Be specific to "${S.topic}".`;
+5 competitors. Be specific to "${S.topic}" in ${market}.`;
 }
 
-function pAudit(){
-  const wordCount = S.docxText.split(/\s+/).filter(Boolean).length;
-  return `You are a senior SEO content auditor specializing in Singapore professional services.
-Analyze this ACTUAL content carefully:
+/* ════════════════════════════════
+   AUDIT PROMPT
+════════════════════════════════ */
+function pAudit() {
+  const wc = docWordCount();
+  const market = detectMarket();
+  const scoreBefore = Math.min(55, Math.max(10, Math.round(wc/60)));
+  const scoreAfter  = Math.min(92, scoreBefore + 35);
+
+  return `You are a senior SEO content auditor. Read the document below WORD FOR WORD and give an honest audit.
 
 === DOCUMENT START ===
-${S.docxText.slice(0,4500)}
+${docPreview(4500)}
 === DOCUMENT END ===
 
-Topic: "${S.topic}"
-Category: ${S.category}
-Page Type: ${isSvc()?'SERVICE PAGE':'BLOG/GUIDE'}
-Actual Word Count: ${wordCount} words
+AUDIT CONTEXT:
+- Topic: "${S.topic}"
+- Market: ${market}
+- Page Type: ${isSvc() ? 'SERVICE PAGE' : 'BLOG/GUIDE'}
+- Word Count: ${wc} words
+${S.pageUrl ? `- URL: ${S.pageUrl}` : ''}
 
-SCORING INSTRUCTIONS — Be ACCURATE and HONEST:
-- score_before must reflect the ACTUAL quality of the uploaded document (if it's short/thin, score low 20-45; if decent, 45-65)
-- score_after is the projected score AFTER optimization (max realistic improvement: +30 to +45 pts)
-- Do NOT give inflated scores — a 400-word page cannot be a 65; it should be 25-35
-- Base score_breakdown on what you ACTUALLY observe in the content
+SCORING (BE BRUTALLY HONEST):
+- score_before: actual quality score RIGHT NOW. ${wc < 300 ? 'Very thin content = 10-25.' : wc < 600 ? 'Short content = 20-40.' : wc < 1200 ? 'Medium content = 35-55.' : 'Decent content = 45-65.'}
+- score_after: realistic improvement after optimization. Max +35 points.
+- Base scores on WHAT YOU ACTUALLY SEE — not what could theoretically exist.
 
-AUDIT RULES:
-- issues_fail: Real problems you found in the actual text (missing keywords, no structure, thin content, etc.)
-- issues_warn: Minor issues (short sentences, missing CTA, no internal links, etc.)
-- issues_pass: Things done correctly (if any headings exist, if topic is clear, etc.)
-- Be specific — reference actual content issues, not generic SEO advice
+issues_fail: Real critical problems you spotted in the text above
+issues_warn: Minor issues you noticed  
+issues_pass: Things actually done correctly
 
 Return ONLY valid JSON:
-{"score_before":${Math.min(65,Math.max(15,Math.round(wordCount/50)))},"score_after":${Math.min(90,Math.max(55,Math.round(wordCount/50)+38))},"word_count_before":${wordCount},"word_count_after":${isSvc()?850:2600},"score_breakdown":{"Content Depth":30,"Keyword Usage":25,"Content Freshness":35,"Structure / UX":40,"E-E-A-T Signals":20,"CTA / Conversion":15},"issues_fail":[{"label":"...","detail":"..."}],"issues_warn":[{"label":"...","detail":"..."}],"issues_pass":[{"label":"...","detail":"..."}]}
-
-Be brutally honest — the person needs accurate feedback to improve their content.`;
+{"score_before":${scoreBefore},"score_after":${scoreAfter},"word_count_before":${wc},"word_count_after":${isSvc()?850:2600},"score_breakdown":{"Content Depth":${Math.min(60,Math.round(wc/20))},"Keyword Usage":25,"Content Freshness":30,"Structure / UX":35,"E-E-A-T Signals":20,"CTA / Conversion":15},"issues_fail":[{"label":"...","detail":"specific issue found in the actual text"}],"issues_warn":[{"label":"...","detail":"..."}],"issues_pass":[{"label":"...","detail":"..."}]}`;
 }
 
-function pOpt(kw,serp,audit){
-  const checkedOpts=getOpts();
-  const opts=checkedOpts.join(', ');
-  const extra=document.getElementById('extra-inst').value.trim();
-  const isSv=isSvc();
+/* ════════════════════════════════
+   OPTIMIZATION PROMPT
+════════════════════════════════ */
+function pOpt(kw, serp, audit) {
+  const checkedOpts = getOpts();
+  const extra = (document.getElementById('extra-inst')?.value || '').trim();
+  const isSv = isSvc();
+  const market = detectMarket();
+  const brand = detectBrand();
+  const year = new Date().getFullYear();
+  const wc = docWordCount();
 
-  // Build specific rules for checked options only
-  const optRules=[];
-  if(checkedOpts.includes('keywords'))optRules.push('- Naturally integrate the researched keywords throughout (primary in H1, H2s; secondary in body; LSI in paragraphs)');
-  if(checkedOpts.includes('meta'))optRules.push('- Write meta_title (55-60 chars, include primary keyword + "Singapore") and meta_description (150-160 chars, action-oriented)');
-  if(checkedOpts.includes('headings'))optRules.push('- Ensure proper H1 > H2 > H3 hierarchy. H1 must include primary keyword. H2s should include secondary keywords');
-  if(checkedOpts.includes('toc')&&!isSv)optRules.push('- MUST include Table of Contents after H1: <div class="toc-box"><h4>📋 Table of Contents</h4><ol>linked items</ol></div>');
-  if(checkedOpts.includes('freshness'))optRules.push('- Update ALL statistics, fees, figures to 2026: GST=9%, EP salary threshold=S$5,600, ACRA fee=S$315, MOM data 2026');
-  if(checkedOpts.includes('serp'))optRules.push('- Add sections that SERP competitors have but current content lacks (from the SERP analysis gaps)');
-  if(checkedOpts.includes('faq')&&!isSv)optRules.push('- Add FAQ section at end: minimum 5 questions using <div class="faq-item"><div class="faq-q">Q</div><div class="faq-a">A</div></div>');
-  if(checkedOpts.includes('cta'))optRules.push('- Add minimum 2 CTA boxes using .tool-cta class with links to 3ecpa.com.sg contact/relevant pages');
-  if(checkedOpts.includes('eeat'))optRules.push('- Add E-E-A-T signals: cite specific SG regulations (mention ACRA, IRAS, MOM), include specific data/numbers, mention 3E Accounting expertise');
-  if(checkedOpts.includes('schema'))optRules.push('- Add JSON-LD schema markup in a <script type="application/ld+json"> block (Article or Service schema)');
-  if(checkedOpts.includes('interlinking')&&isSv)optRules.push('- PRIORITY: Add minimum 6-8 internal links to relevant 3ecpa.com.sg pages (use realistic anchor text)');
-  if(checkedOpts.includes('service_promo')&&isSv)optRules.push('- Prominently highlight 3E Accounting service benefits, what\'s included, why choose 3E');
-  if(checkedOpts.includes('service_explain')&&isSv)optRules.push('- Explain each sub-service/feature individually with its own H3 heading');
-  if(checkedOpts.includes('readability'))optRules.push('- Improve readability: short sentences (15-20 words avg), use bullet lists, break up long paragraphs');
-  if(checkedOpts.includes('images'))optRules.push('- Add HTML comments <!-- Image suggestion: [descriptive alt text] --> at logical visual break points');
-  if(checkedOpts.includes('pricing')&&isSv)optRules.push('- Add transparent pricing section or "Contact for quote" CTA with what\'s included');
-  if(checkedOpts.includes('trust_signals')&&isSv)optRules.push('- Add trust signals: years in business, number of clients served, awards/recognitions, professional memberships');
+  /* Build site base URL for internal links */
+  let siteBase = '';
+  try { siteBase = new URL(S.pageUrl || '').origin; } catch(e) {}
 
-  const svcRules=`
-SERVICE PAGE RULES (NON-NEGOTIABLE):
-- Total content: 700–900 words maximum (concise, scannable, no fluff)
-- NO Table of Contents
-- Focus: commercial intent — why choose 3E, what you get, how to start
-- Minimum 3 CTA buttons/boxes throughout the page`;
+  /* Rules for each checked option */
+  const optRules = [];
+  if (checkedOpts.includes('keywords'))
+    optRules.push(`KEYWORDS: Naturally weave researched keywords into content. Primary keyword in H1 and first H2. Secondary in body H2s. LSI throughout paragraphs. Target keyword density 1-2%.`);
+  if (checkedOpts.includes('meta'))
+    optRules.push(`META: Write meta_title (max 60 chars, include primary keyword + "${market}") and meta_description (150-160 chars, action-oriented, include a benefit).`);
+  if (checkedOpts.includes('headings'))
+    optRules.push(`HEADINGS: Strict H1 > H2 > H3 hierarchy. ONE H1 only. Each H2 covers a distinct subtopic. Include keywords naturally in headings.`);
+  if (checkedOpts.includes('toc') && !isSv)
+    optRules.push(`TABLE OF CONTENTS: Add immediately after H1:\n<div class="toc-box"><h4>📋 Table of Contents</h4><ol><li><a href="#section1">Section Name</a></li>...</ol></div>`);
+  if (checkedOpts.includes('freshness'))
+    optRules.push(`FRESHNESS: Update all stats, fees, thresholds to ${year}. Verify all regulatory figures are current for ${market}. Add "${year}" to relevant headings.`);
+  if (checkedOpts.includes('serp'))
+    optRules.push(`SERP GAPS: Add the missing sections identified in SERP analysis. Cover topics competitors rank for that this page currently misses.`);
+  if (checkedOpts.includes('faq') && !isSv)
+    optRules.push(`FAQ SECTION: Add at end with minimum 6 Q&As relevant to "${S.topic}":\n<div class="faq-item"><div class="faq-q">Question?</div><div class="faq-a">Detailed answer...</div></div>`);
+  if (checkedOpts.includes('cta'))
+    optRules.push(`CTAs: Add MINIMUM 3 CTA boxes throughout content using class "tool-cta". Space them: after intro, mid-content, end. Make them action-oriented with specific benefit.`);
+  if (checkedOpts.includes('eeat'))
+    optRules.push(`E-E-A-T: Add specific credentials, cite official ${market} regulations by name, include statistics with sources, mention years of experience, certifications.`);
+  if (checkedOpts.includes('schema'))
+    optRules.push(`SCHEMA: Add JSON-LD at bottom:\n<script type="application/ld+json">{ "@context":"https://schema.org", "@type":"${isSv?'Service':'Article'}", ... }</script>`);
+  if (checkedOpts.includes('interlinking') && isSv)
+    optRules.push(`INTERNAL LINKS (CRITICAL FOR SERVICE PAGES): Add MINIMUM 8 internal links throughout content. Use natural anchor text. Link to related services, blog posts, guides.${siteBase ? ` Base URL: ${siteBase}` : ''} Format: <a href="${siteBase}/relevant-page/">anchor text</a>. Place links where they add value — inside paragraphs, in a "Related Services" section, and in CTAs.`);
+  if (checkedOpts.includes('service_promo') && isSv)
+    optRules.push(`SERVICE PROMOTION: Add a dedicated "Why Choose ${brand.charAt(0).toUpperCase()+brand.slice(1)}" section. Highlight unique value propositions, what makes the service different, specific benefits the client gets.`);
+  if (checkedOpts.includes('service_explain') && isSv)
+    optRules.push(`SUB-SERVICES: Give each service/feature its OWN H3 heading with 2-3 sentences explaining: what it is, what's included, the benefit to client.`);
+  if (checkedOpts.includes('readability'))
+    optRules.push(`READABILITY: Max 20 words per sentence. Use bullet lists for 3+ items. Short paragraphs (3-4 sentences max). Use bold for key terms. Add subheadings every 150-200 words.`);
+  if (checkedOpts.includes('images'))
+    optRules.push(`IMAGE SUGGESTIONS: Add <!-- Image: [specific alt text description] --> comments at 3-4 visual break points.`);
+  if (checkedOpts.includes('pricing') && isSv)
+    optRules.push(`PRICING: Add a pricing section or table. If exact prices aren't known, use "Starting from..." or "Contact us for a quote" with what's included at each tier.`);
+  if (checkedOpts.includes('trust_signals') && isSv)
+    optRules.push(`TRUST SIGNALS: Add specific trust elements: years established, number of clients served, certifications/memberships, awards. Make them specific and verifiable.`);
 
-  const blogRules=`
-BLOG/GUIDE RULES (NON-NEGOTIABLE):
-- Total content: 2,000–2,800 words (comprehensive but not padded)
-- Table of Contents is MANDATORY (if toc option checked)
-- Include at least one comparison TABLE using proper HTML <table> tags
-- Balance: 60% informational, 40% 3E Accounting promotion`;
+  const contentTarget = isSv
+    ? `SERVICE PAGE CONTENT TARGET:
+- MINIMUM 800 words, ideally 900-1000 words. DO NOT produce less than 800 words.
+- Structure: Intro (100w) → What We Offer (200w) → Each Sub-Service with H3 (300w) → Why Choose Us (150w) → CTA sections
+- NO Table of Contents on service pages
+- Every H3 sub-service section needs: what it is + what's included + client benefit`
+    : `BLOG/GUIDE CONTENT TARGET:
+- MINIMUM 2200 words, ideally 2500-2800 words. DO NOT produce less than 2200 words.
+- Structure: Intro → TOC → Multiple H2 sections (400-500w each) → Comparison table → FAQ → Conclusion
+- Must include at least ONE HTML comparison <table>
+- Comprehensive coverage — answer every question a reader might have`;
 
-  const colorRules=`
-COLOR-CODING HTML RULES — FOLLOW EXACTLY:
-- <div class="new-block"> ... </div> = NEW content you are ADDING (displays GREEN)
-- <div class="remove-block"> ... </div> = OLD content to DELETE (displays RED strikethrough)
-- Content WITHOUT any wrapper = EXISTING content kept unchanged (displays normal/white)
-- <span class="new-inline">word</span> = inline addition (green highlight)
-- <span class="remove-inline">word</span> = inline deletion (red strikethrough)
+  const colorRules = `COLOR-CODING RULES (follow exactly):
+- <div class="new-block">NEW CONTENT</div> = content you're ADDING (shown GREEN)
+- <div class="remove-block">OLD CONTENT</div> = content to DELETE (shown RED strikethrough)  
+- Content with NO wrapper = existing content KEPT AS-IS (shown white/normal)
+- <span class="new-inline">word</span> = inline addition
+- <span class="remove-inline">word</span> = inline deletion
 
-CRITICAL COLOR RULES:
-1. The MAJORITY of content should be unwrapped (white = keep)
-2. Only GENUINELY new sections get new-block
-3. Only content you want DELETED gets remove-block
-4. Do NOT wrap everything in new-block — that defeats the purpose
-5. Original content that you keep verbatim must have NO wrapper at all`;
+IMPORTANT: Most content should be unwrapped (kept). Only genuinely new additions get new-block. Only deletions get remove-block. Do NOT wrap everything in new-block.`;
 
-  const qualityRules=`
-QUALITY & ACCURACY RULES:
-- Write natural, professional English (not keyword-stuffed)
-- All Singapore data must be 2026-accurate
-- Internal links must use real 3ecpa.com.sg URL patterns (e.g. /company-incorporation/, /accounting/, /taxation/)
-- Do NOT fabricate statistics — use real Singapore government figures
-- Do NOT repeat the same keyword more than 3x in close proximity
-- Make content genuinely helpful — it should answer the user's actual question`;
+  const instBlock = extra
+    ? `\nUSER ADDITIONAL INSTRUCTIONS (MANDATORY — must action all of these):\n"${extra}"\n\nAction every instruction above AND add "instructions_response" to JSON explaining what you changed.`
+    : '';
 
-  const instPart=extra?`\n\nUSER'S ADDITIONAL INSTRUCTIONS (MANDATORY — must be actioned):\n"${extra}"\n\nYou MUST:\n1. Action these instructions in the optimized content\n2. Include "instructions_response" in your JSON — a detailed explanation of exactly what you changed/added because of these instructions`:'';
+  return `You are a senior SEO content strategist. Produce a COMPLETE, THOROUGH optimization of the document below.
 
-  return `You are a senior SEO content strategist for 3E Accounting Singapore (3ecpa.com.sg).
-Your job: Optimize the uploaded document for the topic "${S.topic}".
+═══ ORIGINAL DOCUMENT ═══
+${docPreview(5500)}
+═══ END DOCUMENT ═══
 
-## ORIGINAL DOCUMENT (analyze thoroughly — understand the existing content first):
-${S.docxText.slice(0,5500)}
-
-## CONTEXT:
+CONTEXT:
 - Topic: "${S.topic}"
-- Category: ${S.category} (${isSv?'SERVICE PAGE':'BLOG/GUIDE'})
-- Page URL Target: https://www.3ecpa.com.sg/
+- Category: ${S.category} → ${isSv ? 'SERVICE PAGE' : 'BLOG/GUIDE'}
+- Market: ${market}
+- Brand/Site: ${brand}${siteBase ? ` (${siteBase})` : ''}
+- Year: ${year}
+${S.pageUrl ? `- Page URL: ${S.pageUrl}` : ''}
 
-## KEYWORD RESEARCH RESULT:
+KEYWORD DATA:
 ${kw}
 
-## SERP ANALYSIS RESULT:
+SERP ANALYSIS:
 ${serp}
 
-## SEO AUDIT RESULT:
+SEO AUDIT:
 ${audit}
 
-## USER SELECTED ONLY THESE OPTIMIZATION GOALS (apply ONLY these):
-${opts || 'None selected — do minimal optimization only'}
+CHECKED OPTIMIZATION GOALS — apply EVERY one of these:
+${checkedOpts.length ? checkedOpts.join(', ') : 'general optimization'}
 
-## OPTIMIZATION RULES FOR CHECKED OPTIONS:
-${optRules.join('\n')||'- No specific options selected, do general light optimization'}
+DETAILED RULES FOR EACH GOAL:
+${optRules.length ? optRules.join('\n\n') : 'Apply general SEO best practices.'}
 
-${isSv?svcRules:blogRules}
+${contentTarget}
 
 ${colorRules}
 
-${qualityRules}
-${instPart}
+QUALITY NON-NEGOTIABLES:
+- Write professional, natural English — no keyword stuffing
+- All data must be accurate for ${market} as of ${year}
+- Internal links must use real URL patterns from the actual site${siteBase ? ` (${siteBase})` : ''}
+- Do NOT repeat the same keyword more than 3× in close proximity
+- Content must genuinely help the reader — not just tick SEO boxes
+- optimized_html must be COMPLETE — include the FULL page content, not excerpts
+${instBlock}
 
-## OUTPUT — Return ONLY valid JSON (absolutely no markdown fences, no explanation outside JSON):
+OUTPUT — Return ONLY valid JSON, absolutely no markdown code fences:
 {
-  "meta_title": "55-60 char title with primary keyword",
-  "meta_description": "150-160 char compelling description",
-  "url_slug": "/relevant-url-slug/",
-  "h1": "H1 heading",
-  "optimized_html": "[COMPLETE optimized HTML with color-coded changes — follow all rules above]",
-  "changes_added": [{"title":"what was added","detail":"why it was added for SEO"}],
-  "changes_removed": [{"title":"what was removed","detail":"why it was removed"}]${extra?`,\n  "instructions_response": "detailed response to user instructions"`:''}\n}`;
+  "meta_title": "max 60 chars, primary keyword + ${market}",
+  "meta_description": "150-160 chars, benefit-focused",
+  "url_slug": "/url-slug/",
+  "h1": "primary H1 heading",
+  "optimized_html": "THE COMPLETE OPTIMIZED HTML — full page, all sections, color-coded",
+  "changes_added": [{"title":"what was added","detail":"SEO reason"}],
+  "changes_removed": [{"title":"what removed","detail":"why removed"}]${extra ? `,\n  "instructions_response": "detailed explanation of what you changed per user instructions"` : ''}
+}`;
 }
 
-/* Show prompt preview */
-function showPromptPreview(which){
-  const el=document.getElementById('prompt-preview-box');
-  const btn=document.getElementById('prompt-toggle-btn');
-  if(el.classList.contains('show')){
-    el.classList.remove('show');
-    btn.textContent='👁 Preview AI Prompts';
+/* ══════════════════════════════════════════
+   EDITABLE PROMPT MODAL SYSTEM
+══════════════════════════════════════════ */
+if (!window.promptOverrides) window.promptOverrides = {};
+
+function openPromptEditor(key, label, promptText) {
+  const modal = document.getElementById('prompt-modal');
+  document.getElementById('pm-title').textContent = '✏️ Edit: ' + label;
+  document.getElementById('pm-textarea').value = promptText;
+
+  document.getElementById('pm-save').onclick = () => {
+    window.promptOverrides[key] = document.getElementById('pm-textarea').value;
+    modal.style.display = 'none';
+    showToast('✅ Custom prompt saved for this session');
+    refreshPromptPanel();
+  };
+  document.getElementById('pm-reset').onclick = () => {
+    delete window.promptOverrides[key];
+    modal.style.display = 'none';
+    showToast('↩ Prompt reset to auto-generated default');
+    refreshPromptPanel();
+  };
+  document.getElementById('pm-close').onclick = () => { modal.style.display = 'none'; };
+  modal.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
+  modal.style.display = 'flex';
+}
+
+function getPromptText(key) {
+  if (window.promptOverrides[key]) return window.promptOverrides[key];
+  return { kw: pKw, serp: pSERP, audit: pAudit }[key]?.() || '';
+}
+
+function refreshPromptPanel() {
+  const panel = document.getElementById('prompt-editor-panel');
+  if (!panel || panel.style.display === 'none') return;
+  showAllPromptEditors();
+}
+
+function showAllPromptEditors() {
+  const panel = document.getElementById('prompt-editor-panel');
+  const btn = document.getElementById('btn-toggle-prompts');
+  if (panel.style.display !== 'none') {
+    panel.style.display = 'none';
+    btn.textContent = '👁 Preview & Edit AI Prompts';
     return;
   }
-  let text='';
-  if(which==='all'){
-    text='=== KEYWORD PROMPT ===\n'+pKw()+'\n\n=== SERP PROMPT ===\n'+pSERP()+'\n\n=== AUDIT PROMPT ===\n'+pAudit();
+  const prompts = [
+    { key: 'kw',   label: '🔑 Keyword Research' },
+    { key: 'serp', label: '📊 SERP Analysis' },
+    { key: 'audit',label: '🔍 SEO Audit' },
+  ];
+  panel.innerHTML = prompts.map(p => {
+    const isEdited = !!window.promptOverrides[p.key];
+    const preview = getPromptText(p.key).slice(0, 160).replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return `<div class="prompt-preview-item">
+      <div class="pp-header">
+        <span class="pp-label">${isEdited ? '<span style="color:#c87000;">✏️ [CUSTOM]</span> ' : ''}${p.label}</span>
+        <button class="btn-edit-prompt" onclick="openPromptEditor('${p.key}','${p.label}',getPromptText('${p.key}'))">Edit Prompt</button>
+        ${isEdited ? `<button class="btn-reset-prompt" onclick="delete window.promptOverrides['${p.key}'];refreshPromptPanel();showToast('Reset to default')">↩ Reset</button>` : ''}
+      </div>
+      <div class="pp-preview">${preview}…</div>
+    </div>`;
+  }).join('');
+  panel.style.display = 'block';
+  btn.textContent = '🙈 Hide Prompts';
+}
+
+function resetPrompt(key) {
+  delete window.promptOverrides[key];
+  showToast('Reset to default');
+  refreshPromptPanel();
+}
+
+function showToast(msg) {
+  let t = document.getElementById('toast-msg');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast-msg';
+    t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#0d2b6e;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.3);transition:opacity .3s;pointer-events:none;';
+    document.body.appendChild(t);
   }
-  el.textContent=text;
-  el.classList.add('show');
-  btn.textContent='🙈 Hide Preview';
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t._to);
+  t._to = setTimeout(() => { t.style.opacity = '0'; }, 3000);
 }
