@@ -134,7 +134,12 @@
     </div>
     <div class="field" id="custom-wrap" style="display:none;">
       <label class="label">Enter Custom Topic</label>
-      <input type="text" id="custom-topic" placeholder="e.g. Singapore GST Registration Guide 2026">
+      <input type="text" id="custom-topic" placeholder="e.g. HR Payroll Guide, Tax Filing Tips, Company Registration...">
+    </div>
+    <div class="field" style="margin-top:4px;">
+      <label class="label">Live Page URL <span style="font-size:11px;font-weight:400;text-transform:none;color:var(--text4);">(optional — recommended for accurate SERP analysis)</span></label>
+      <input type="url" id="page-url" placeholder="https://yoursite.com/page-to-optimize" oninput="S.pageUrl=this.value.trim()">
+      <div class="hint">Paste the URL of the page you're optimizing. AI will use this for context-aware recommendations and internal linking suggestions.</div>
     </div>
     <div id="topic-preview" style="display:none;margin-bottom:14px;"></div>
     <button class="btn btn-blue btn-lg" id="btn-step4" onclick="goStep5()" disabled>Continue to Options →</button>
@@ -163,6 +168,14 @@
     </div>
 
     <hr class="div">
+
+    <!-- Prompt Editor Panel -->
+    <div style="margin-bottom:14px;">
+      <button class="btn btn-ghost btn-sm" id="btn-toggle-prompts" onclick="showAllPromptEditors()" style="font-size:12px;padding:7px 14px;">👁 Preview & Edit AI Prompts</button>
+      <span style="font-size:11px;color:var(--text4);margin-left:10px;">Customize how the AI analyzes your content before running</span>
+    </div>
+    <div id="prompt-editor-panel" style="display:none;background:#f8faff;border:1.5px solid #dde5f3;border-radius:10px;padding:14px;margin-bottom:16px;"></div>
+
     <div class="progress-wrap" id="progress-wrap">
       <div class="progress-meta"><span id="prog-text">Initializing…</span><span id="prog-pct">0%</span></div>
       <div class="progress-track"><div class="progress-fill" id="prog-fill"></div></div>
@@ -202,7 +215,6 @@
           <li><a href="#rpt-gap">📋 Gaps</a></li>
           <li id="changes-nav-li" style="display:none;"><a href="#rpt-changes">📝 Changes</a></li>
           <li id="inst-nav-li" style="display:none;"><a href="#rpt-inst">💡 Instructions</a></li>
-          <li id="prompts-nav-li" style="display:none;"><a href="#rpt-prompts">🤖 Prompts Used</a></li>
           <li><a href="#rpt-blog">✏️ Optimized Blog</a></li>
         </ul>
       </div>
@@ -277,13 +289,6 @@
         <div class="ai-response-panel" id="inst-content"></div>
       </div>
 
-      <!-- Prompts Used -->
-      <div class="rpt-section" id="rpt-prompts" style="display:none;">
-        <div class="rpt-section-title">🤖 AI Prompts Used to Generate This Report</div>
-        <div class="alert alert-blue" style="margin-bottom:16px;"><span>ℹ️</span><div>These are the exact instructions sent to the AI. Understanding these helps you know how results were generated and what each section is based on.</div></div>
-        <div id="prompts-content"></div>
-      </div>
-
       <!-- Optimized Blog -->
       <div class="rpt-section" id="rpt-blog" style="padding:0;">
         <div style="padding:22px 28px 0;"><div class="rpt-section-title" style="margin-bottom:14px;">✏️ Fully Optimized Content — Color-Coded Changes</div></div>
@@ -310,23 +315,41 @@
 
 </main>
 
+<!-- PROMPT EDITOR MODAL -->
+<div id="prompt-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#fff;border-radius:16px;width:100%;max-width:760px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px 14px;border-bottom:1.5px solid #e8f0fd;flex-shrink:0;">
+      <div id="pm-title" style="font-family:'Playfair Display',serif;font-size:17px;font-weight:700;color:#0d2b6e;">Edit Prompt</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button id="pm-reset" style="padding:6px 14px;border-radius:7px;border:1.5px solid #dde5f3;background:#f8f9fa;font-size:12px;font-weight:600;cursor:pointer;color:#555;">↩ Reset Default</button>
+        <button id="pm-save" style="padding:6px 16px;border-radius:7px;background:#0d2b6e;color:#fff;border:none;font-size:12px;font-weight:700;cursor:pointer;">💾 Save & Use</button>
+        <button id="pm-close" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888;padding:2px 6px;">✕</button>
+      </div>
+    </div>
+    <div style="padding:16px 22px;flex:1;overflow:auto;">
+      <div style="font-size:11px;color:#888;margin-bottom:8px;">Edit the prompt below. Variables like ${S.topic}, ${S.category}, document content are auto-filled at runtime. Save to override for this session.</div>
+      <textarea id="pm-textarea" style="width:100%;min-height:380px;font-family:'JetBrains Mono',monospace;font-size:12px;border:1.5px solid #dde5f3;border-radius:8px;padding:12px;resize:vertical;line-height:1.6;color:#1a1a1a;outline:none;" spellcheck="false"></textarea>
+    </div>
+  </div>
+</div>
+
 <!-- libs -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@9.0.3/build/index.js" onload="console.log('✅ docx v9 ready')" onerror="loadDocxFallback()"></script>
 <script>
-// Preload docx library
-(function(){
-  const s=document.createElement('script');
-  s.src='https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js';
-  s.onload=()=>console.log('docx library ready');
-  s.onerror=()=>{
-    const s2=document.createElement('script');
-    s2.src='https://unpkg.com/docx@8.5.0/build/index.js';
-    s2.onload=()=>console.log('docx library ready (fallback)');
-    s2.onerror=()=>console.warn('docx library preload failed — will retry on download');
+function loadDocxFallback(){
+  console.warn('docx CDN failed, trying fallback…');
+  var s=document.createElement('script');
+  s.src='https://unpkg.com/docx@9.0.3/build/index.js';
+  s.onload=function(){console.log('✅ docx fallback ready');};
+  s.onerror=function(){
+    var s2=document.createElement('script');
+    s2.src='https://cdnjs.cloudflare.com/ajax/libs/docx/8.5.0/index.js';
+    s2.onload=function(){console.log('✅ docx cdnjs ready');};
     document.head.appendChild(s2);
   };
   document.head.appendChild(s);
-})();
+}
 </script>
 <script src="config.js"></script>
 <script src="prompts.js"></script>
