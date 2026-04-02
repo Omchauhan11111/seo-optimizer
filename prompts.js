@@ -217,9 +217,46 @@ function pSERP() {
   const market = detectMarket();
   const brand = detectBrand();
   const rules = getCatRules();
-  const tld = { Malaysia:"my", Singapore:"sg", Australia:"com.au", India:"in" }[market] || "com";
+  /* ── REAL DOMAIN WHITELIST per market ───────────────────────────────────
+     Only domains that actually exist and rank for B2B/corporate topics.
+     We NEVER invent URLs. If a domain is uncertain we use example.com.
+  ──────────────────────────────────────────────────────────────────────── */
+  const REAL_DOMAINS = {
+    Singapore: [
+      "https://www.acra.gov.sg",
+      "https://www.iras.gov.sg",
+      "https://www.mom.gov.sg",
+      "https://www.mlaw.gov.sg",
+      "https://www.enterprisesg.gov.sg",
+      "https://www.pwc.com/sg",
+      "https://www.deloitte.com/sg",
+      "https://www.ey.com/en_sg",
+      "https://kpmg.com/sg",
+      "https://www.singaporelegaladvice.com",
+      "https://www.3ecpa.com.sg",
+      "https://www.businesstimes.com.sg",
+      "https://www.channelnewsasia.com",
+    ],
+    Malaysia: [
+      "https://www.ssm.com.my",
+      "https://www.hasil.gov.my",
+      "https://www.pwc.com/my",
+      "https://www.deloitte.com/my",
+      "https://kpmg.com/my",
+    ],
+    Australia: [
+      "https://www.ato.gov.au",
+      "https://asic.gov.au",
+      "https://www.pwc.com.au",
+    ],
+    India: [
+      "https://www.mca.gov.in",
+      "https://www.incometax.gov.in",
+    ],
+  };
+  const allowedDomains = (REAL_DOMAINS[market] || REAL_DOMAINS["Singapore"]).join("\n  - ");
 
-  return `You are a senior SEO analyst. Simulate a REALISTIC SERP analysis for "${S.topic}" in ${market}.
+  return `You are a senior SEO analyst. Produce a REALISTIC SERP analysis for "${S.topic}" in ${market}.
 
 DOCUMENT CONTENT (understand what THIS page currently covers):
 ═══ START ═══
@@ -233,12 +270,18 @@ PAGE TYPE: ${pageType()}
 ${S.pageUrl ? `URL BEING OPTIMISED: ${S.pageUrl}` : ""}
 BRAND: ${brand}
 
-REALISTIC COMPETITOR ANALYSIS:
-Think carefully who ACTUALLY ranks for "${S.topic}" in ${market}:
-- Official government sites: ACRA.gov.sg, MOM.gov.sg, IRAS.gov.sg, SSM.com.my (rank #1–2 for regulatory topics)
-- Established professional firms: Big 4, top law firms, major accounting firms in ${market}
-- Direct competitors similar to ${brand}
-- Industry media: StraitsTimes, BusinessTimes, CNA (SG), TheEdge (MY)
+━━ CRITICAL URL RULES — READ CAREFULLY ━━
+You MUST use ONLY real, existing domains from this whitelist:
+  - ${allowedDomains}
+
+⛔ NEVER invent or fabricate domain names such as:
+   - bigfirm.sg, leadingfirm.sg, smesupport.sg, marketinsights.sg
+   - Any .sg / .my domain NOT in the whitelist above
+   - Any URL that does not exist on the live internet
+
+✅ For URL slugs: use a PLAUSIBLE slug that could realistically exist on that domain.
+   e.g. "https://www.acra.gov.sg/how-to-guides/starting-a-company" is acceptable.
+   If you are not sure of the exact URL, use: "https://example.com/page-placeholder"
 
 TARGET LENGTH: ${rules.words.label} words (category: ${rules.description})
 TONE: ${rules.tone}
@@ -249,7 +292,7 @@ Return ONLY valid JSON — no markdown, no explanation:
     {
       "rank": 1,
       "title": "realistic page title",
-      "url": "https://realdomain.${tld}/realistic-slug/",
+      "url": "https://[WHITELISTED-DOMAIN]/realistic-slug/",
       "word_count": 2800,
       "sections": ["H2 Section 1", "H2 Section 2", "H2 Section 3", "H2 Section 4", "FAQ"],
       "has_faq": true,
@@ -542,10 +585,57 @@ Each H3 must have its own full explanation. Do NOT just summarize — explain fu
     ? `\nADD A CALLOUT BOX somewhere in this section:\n<div class="callout callout-blue"><strong>💡 Key Point:</strong><p>A genuinely important insight or fact that the reader must not miss. Make it specific — include a real figure, regulation name, or expert tip.</p></div>`
     : "";
 
+  /* ── REAL INTERNAL LINK MAP ─────────────────────────────────────────────
+     Only verified 3E CPA page paths. DO NOT invent slugs.
+  ──────────────────────────────────────────────────────────────────────── */
+  const INTERNAL_LINK_MAP = {
+    "company-incorporation":      "/singapore-company-incorporation/",
+    "accounting-services":        "/accounting/",
+    "taxation-services":          "/taxation/",
+    "corporate-secretarial":      "/corporate-secretarial/",
+    "virtual-office":             "/virtual-office/",
+    "work-pass-immigration":      "/immigration-work-pass/",
+    "hr-payroll":                 "/human-resource/",
+    "auditing-services":          "/auditing/",
+    "business-advisory":          "/business-advisory/",
+    "nominee-director":           "/singapore-nominee-director-services/",
+    "contact-us":                 "/contact/",
+  };
+
   /* Interlinking for services */
   const interlinksInstruction = (checkedOpts.includes("interlinking") && isSvc() && sectionIndex % 2 === 0)
-    ? `\nADD 2 INTERNAL LINKS in this section (anchor text must be keyword-rich and descriptive):\nFormat: <a href="${siteBase || "https://3ecpa.com.sg"}/relevant-page/">descriptive anchor text</a>`
+    ? `\nADD 1–2 INTERNAL LINKS in this section using ONLY the verified paths below.
+⛔ NEVER fabricate a URL slug or use /relevant-page/ or any placeholder.
+Verified internal link paths for ${siteBase || "https://www.3ecpa.com.sg"}:
+${Object.entries(INTERNAL_LINK_MAP).map(([k,v]) => `  ${siteBase || "https://www.3ecpa.com.sg"}${v}  → anchor: "${k.replace(/-/g," ")}"`).join("\n")}
+Choose the path most relevant to this section's topic. If none are relevant, omit links entirely.`
     : "";
+
+  /* ── INTRODUCTION ENFORCEMENT ───────────────────────────────────────────
+     The FIRST section of every page MUST be a proper Introduction.
+     For services pages this is especially critical — it was the #1 reported gap.
+  ──────────────────────────────────────────────────────────────────────── */
+  const introInstruction = isFirst ? `
+━━ MANDATORY INTRODUCTION (THIS IS SECTION 1 — INTRODUCTION IS REQUIRED) ━━
+${S.category === "services" ? `
+This is a SERVICE PAGE. The introduction MUST:
+- Be 120–180 words (no shorter, no longer)
+- Open with a direct, benefit-led statement about what the service does for the client
+- Name the service clearly in the first sentence using the primary keyword
+- Briefly state who this service is for (SMEs, foreign founders, MNCs, etc.)
+- Mention 1–2 key proof points (e.g. years in operation, client count, licence status)
+- End with a micro-CTA directing readers to contact or scroll for more
+- Tone: professional and clear — NO storytelling hooks, NO "Let's be honest", NO "Here's the thing"
+- Format: 2–3 short paragraphs. NO bullet points in the intro.
+` : `
+This is the opening section. It MUST:
+- Be 150–200 words
+- Establish what the topic is and why it matters to ${market} readers
+- Set up what the reader will learn in this guide
+- Be informational — do not sell in the intro
+`}
+DO NOT skip or thin out the introduction. It is mandatory.
+` : "";
 
   return `You are a world-class SEO content writer specialising in ${market} business content.
 Your job: write ONE COMPLETE SECTION of a ${catLabel()} page.
@@ -594,8 +684,9 @@ ${interlinksInstruction}
 4. Every paragraph must add unique value — no filler, no repetition
 5. Primary keyword must appear naturally at least once in this section
 6. Include specific ${market} facts: actual fees, real timelines, official body names, act references
-7. ${isFirst ? "First section: start with a compelling hook that draws the reader in immediately" : ""}
+7. ${isFirst ? "First section: MANDATORY INTRODUCTION — follow the intro rules above exactly" : ""}
 8. ${isLast ? "Last section (if conclusion): summarize key takeaways and what the reader should do next" : ""}
+${introInstruction}
 9. Every H3 section must be fully written — minimum ${Math.round(targetWords / (Math.max(section.h3s?.length || 1, 1) + 1))} words each
 10. Color coding rules:
     - <div class="new-block">...</div> = content you are ADDING (not in original document)
@@ -652,8 +743,8 @@ function pMerge(structure, sectionsHtml, kwData, auditData) {
   <h2>Ready to Get Started? We Make It Simple.</h2>
   <p>Join thousands of businesses that trust ${brand} for their corporate needs in ${market}. Fast, accurate, fully compliant.</p>
   <div class="btn-row" style="justify-content:center;display:flex;gap:14px;flex-wrap:wrap;">
-    <a href="${siteBase || "https://3ecpa.com.sg"}/contact/" class="cta-btn-w" style="color:#0d2b6e;">Get Free Consultation</a>
-    <a href="${siteBase || "https://3ecpa.com.sg"}/${S.category}/" class="cta-btn-outline" style="border-color:#0d2b6e;color:#0d2b6e;">View Our Services</a>
+    <a href="${siteBase || "https://www.3ecpa.com.sg"}/contact/" class="cta-btn-w" style="color:#0d2b6e;">Get Free Consultation</a>
+    <a href="${siteBase || "https://www.3ecpa.com.sg"}/${S.category}/" class="cta-btn-outline" style="border-color:#0d2b6e;color:#0d2b6e;">View Our Services</a>
   </div>
 </div>` : "";
 
@@ -690,7 +781,7 @@ ${bottomCta}
 7. Verify CTAs use the correct class (tool-cta, bottom-cta)
 8. ${rules.cta ? "Append the bottom-cta at the very end" : "No bottom CTA needed"}
 9. Ensure there are NO duplicate headings
-10. Verify internal links use real URL patterns from ${siteBase || "https://3ecpa.com.sg"}
+10. Verify internal links use ONLY real verified paths from https://www.3ecpa.com.sg — remove any link containing /relevant-page/, /page-placeholder/, or any fabricated slug
 11. Count total words — must be minimum ${rules.words.min}. If short, EXPAND the intro and conclusion.
 
 ━━ SEO AUDIT ISSUES TO FIX ━━
@@ -746,10 +837,10 @@ A) SENTENCE VARIETY — actively break predictable patterns:
    - Use sentence fragments sparingly for emphasis. Like this.
    - Vary paragraph length — some 1 sentence, some 4–5 sentences
 
-B) NATURAL HUMAN PHRASES — insert these sparingly (1–2 per section max):
-   - "Here's the thing..." / "Let's be honest..." / "In practice..."
-   - "Now, you might be wondering..." / "The short answer is..."
-   - "Worth noting:" / "One thing most people miss:"
+B) NATURAL HUMAN PHRASES — use ONLY for informational/blog content:
+   ⛔ For SERVICE PAGES (conversion tone): NEVER use casual hooks like "Let's be honest...", "Here's the thing...", "Now, you might be wondering...", "The short answer is..." — these undermine professional trust.
+   ✅ For BLOG/RESOURCE pages only (informational/deep tone), insert sparingly (max 1–2 per section):
+   - "In practice..." / "Worth noting:" / "One thing most people miss:"
    - "In reality..." / "That said..." / "Fair warning:"
 
 C) LIGHT IMPERFECTIONS — real editors don't over-polish:
