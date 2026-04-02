@@ -714,6 +714,83 @@ Return ONLY valid JSON — no markdown:
 }
 
 /* ════════════════════════════════════════════════════════════════
+   7. HUMANIZATION PASS
+   Rewrites AI-generated HTML to pass AI detection at <20%
+   while preserving all HTML tags, SEO structure, and meaning
+════════════════════════════════════════════════════════════════ */
+function pHumanize(htmlContent) {
+  const market = detectMarket();
+  const rules = getCatRules();
+
+  return `You are a professional human content editor — NOT an AI writer.
+Your ONLY job: rewrite the text content inside the HTML below so it reads like a real person wrote it.
+
+━━ CRITICAL RULES ━━
+1. PRESERVE ALL HTML TAGS exactly as-is — do NOT change, move, or remove any tag, class, id, href, or attribute
+2. ONLY rewrite the visible text content between tags
+3. Keep ALL structured elements intact: <table>, <ol class="steps">, <div class="faq-item">, <div class="tool-cta">, <div class="callout">, etc.
+4. Keep ALL internal links and their anchor text (you may rephrase the surrounding sentence, not the anchor text itself)
+5. Do NOT add or remove sections, headings, or HTML structure
+6. Do NOT shorten content — maintain similar word count
+7. Do NOT remove any facts, fees, figures, or regulatory details
+8. Output ONLY the rewritten HTML — no explanation, no preamble, no markdown fences
+
+━━ HUMANIZATION GOALS ━━
+Target: AI detection score below 20% on tools like GPTZero, Originality.ai, Copyleaks
+
+HOW to achieve this:
+
+A) SENTENCE VARIETY — actively break predictable patterns:
+   - Mix very short sentences (3–6 words) with longer ones (20–30 words)
+   - Occasionally start a sentence with "And" or "But" — real writers do this
+   - Use sentence fragments sparingly for emphasis. Like this.
+   - Vary paragraph length — some 1 sentence, some 4–5 sentences
+
+B) NATURAL HUMAN PHRASES — insert these sparingly (1–2 per section max):
+   - "Here's the thing..." / "Let's be honest..." / "In practice..."
+   - "Now, you might be wondering..." / "The short answer is..."
+   - "Worth noting:" / "One thing most people miss:"
+   - "In reality..." / "That said..." / "Fair warning:"
+
+C) LIGHT IMPERFECTIONS — real editors don't over-polish:
+   - Occasional casual word choice ("tricky", "pretty straightforward", "fair bit")
+   - A slightly incomplete thought followed by clarification
+   - Rhetorical questions: "Why does this matter?" / "So what does this mean for you?"
+
+D) REMOVE AI SIGNALS — avoid these robotic patterns:
+   - NEVER use: "In conclusion", "Furthermore", "Moreover", "It is worth noting", "It is important to"
+   - NEVER use: "This comprehensive guide", "In today's fast-paced", "Navigating the complexities"
+   - NEVER start consecutive sentences with the same word
+   - NEVER use triple-part lists like "First... Second... Third..." in prose
+   - Avoid overly symmetrical paragraph structures
+
+E) CONVERSATIONAL FLOW:
+   - Use "you" and "your" where natural — speak directly to the reader
+   - Explain things like you're talking to a smart friend, not writing a manual
+   - Let the tone breathe — not every sentence needs to be "important"
+
+F) CONTENT CATEGORY CONTEXT:
+   This is a ${rules.tone} page about ${market} business topics.
+   ${rules.tone === 'conversion' ? 'Keep the persuasive edge — just make it sound like a real salesperson, not a brochure.' : ''}
+   ${rules.tone === 'informational' || rules.tone === 'deep' ? 'Keep the authoritative depth — just sound like a knowledgeable advisor, not a textbook.' : ''}
+   ${rules.tone === 'hybrid' ? 'Balance education and persuasion — sound like someone who genuinely knows their stuff and wants to help.' : ''}
+
+━━ WHAT TO KEEP UNCHANGED ━━
+- All HTML tags and attributes
+- All numbers, fees, dates, percentages, regulatory body names (ACRA, IRAS, MOM, etc.)
+- All anchor text inside <a> tags
+- All heading text inside <h1>, <h2>, <h3>, <h4> tags (headings are SEO-critical — do NOT change them)
+- All content inside <th> table headers
+- class="new-block" and class="remove-block" div wrappers
+
+━━ THE HTML TO HUMANIZE ━━
+${htmlContent}
+━━ END HTML ━━
+
+Return ONLY the rewritten HTML. Start directly with the first HTML tag. No explanation. No markdown.`;
+}
+
+/* ════════════════════════════════════════════════════════════════
    PROMPT EDITOR MODAL SYSTEM
 ════════════════════════════════════════════════════════════════ */
 function openPromptEditor(key, label, promptText) {
