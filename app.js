@@ -288,6 +288,32 @@ async function runOpt() {
     const serpPrompt = window.promptOverrides?.serp || pSERP();
     const serpR = await callAI(serpPrompt);
     const serpD = parseJSON(serpR) || {};
+    /* ── SERP URL VALIDATOR ──────────────────────────────────────────────
+       Strip fabricated URLs before they reach the rendered report.
+       Only domains in ALLOWED_SERP_DOMAINS pass through; others → example.com
+    ──────────────────────────────────────────────────────────────────────── */
+    const ALLOWED_SERP_DOMAINS = [
+      'acra.gov.sg', 'iras.gov.sg', 'mom.gov.sg', 'mlaw.gov.sg',
+      'enterprisesg.gov.sg', 'singaporelegaladvice.com', 'businesstimes.com.sg',
+      'channelnewsasia.com', '3ecpa.com.sg', 'ssm.com.my', 'hasil.gov.my',
+      'ato.gov.au', 'asic.gov.au', 'mca.gov.in', 'incometax.gov.in',
+      'example.com'
+    ];
+    function validateSerpUrl(url) {
+      try {
+        const hostname = new URL(url).hostname.replace(/^www\./, '');
+        return ALLOWED_SERP_DOMAINS.some(d => hostname === d || hostname.endsWith('.' + d))
+          ? url
+          : 'https://example.com/placeholder';
+      } catch (e) { return 'https://example.com/placeholder'; }
+    }
+    if (serpD.serp_competitors) {
+      serpD.serp_competitors = serpD.serp_competitors.map(c => ({
+        ...c,
+        url: validateSerpUrl(c.url || '')
+      }));
+    }
+
     logStep(`✅ SERP: ${(serpD.content_gaps || []).length} gaps identified`);
 
     /* ── PHASE 3: SEO Audit ── */
@@ -376,6 +402,34 @@ async function runOpt() {
       /* Non-fatal: continue with original merged HTML */
     }
 
+    /* ── INTERNAL LINK SCRUBBER ─────────────────────────────────────────────
+       Remove any href that contains placeholder/fabricated slugs.
+       Replaces the href with the contact page as a safe fallback,
+       or strips the <a> tag entirely if no mapping found.
+    ──────────────────────────────────────────────────────────────────────── */
+    const VERIFIED_PATHS = [
+      '/singapore-company-incorporation/', '/accounting/', '/taxation/',
+      '/corporate-secretarial/', '/virtual-office/', '/immigration-work-pass/',
+      '/human-resource/', '/auditing/', '/business-advisory/',
+      '/singapore-nominee-director-services/', '/contact/', '/services/',
+      '/incorporation/', '/resources/', '/blogs/'
+    ];
+    let siteBaseForScrub = '';
+    try { siteBaseForScrub = new URL(S.pageUrl || '').origin; } catch (e) { siteBaseForScrub = 'https://www.3ecpa.com.sg'; }
+
+    finalHtml = finalHtml.replace(/href="([^"]+)"/g, (match, href) => {
+      // External links — don't touch
+      if (href.startsWith('http') && !href.includes('3ecpa.com.sg')) return match;
+      // Internal or relative links — validate the path
+      let path = href.replace(siteBaseForScrub, '').replace('https://www.3ecpa.com.sg', '').replace('https://3ecpa.com.sg', '');
+      const isVerified = VERIFIED_PATHS.some(vp => path === vp || path.startsWith(vp));
+      if (!isVerified) {
+        // Fabricated slug → replace with contact
+        return `href="${siteBaseForScrub}/contact/"`;
+      }
+      return match;
+    });
+
     /* Build final result */
     setP(100, 'Complete! ✅');
     PHASE_IDS.forEach(id => {
@@ -415,7 +469,7 @@ function buildFallbackHtml(structure, sectionsHtml) {
   const year = new Date().getFullYear();
 
   let siteBase = '';
-  try { siteBase = new URL(S.pageUrl || '').origin; } catch (e) { siteBase = 'https://3ecpa.com.sg'; }
+  try { siteBase = new URL(S.pageUrl || '').origin; } catch (e) { siteBase = 'https://www.3ecpa.com.sg'; }
 
   const metaStrip = `<div class="meta-strip">
   <span class="meta-badge">3E Accounting Singapore</span>
@@ -546,13 +600,11 @@ function renderReport() {
       </div>`).join('');
   }
 
-  /* Generation log */
+  /* Generation log — intentionally NOT rendered in output.
+     Logs are internal-only (visible during generation in gen-log-wrap).
+     They must NOT appear in the final report or downloaded HTML. */
   const logSection = document.getElementById('rpt-log');
-  if (logSection && S.generationLog.length) {
-    logSection.style.display = 'block';
-    document.getElementById('log-nav-li').style.display = 'list-item';
-    document.getElementById('gen-log-output').innerHTML = S.generationLog.map(l => `<div class="log-line">${l}</div>`).join('');
-  }
+  if (logSection) logSection.style.display = 'none';
 
   /* Blog body */
   const metaBox = `<div class="meta-output-box">
