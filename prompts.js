@@ -254,7 +254,37 @@ function pSERP() {
       "https://www.incometax.gov.in",
     ],
   };
-  const allowedDomains = (REAL_DOMAINS[market] || REAL_DOMAINS["Singapore"]).join("\n  - ");
+  /* ── KNOWN REAL URL EXAMPLES PER MARKET ─────────────────────────────────
+     These are actual existing pages. AI must copy these formats exactly.
+     For any domain NOT listed here → force https://example.com/placeholder
+  ──────────────────────────────────────────────────────────────────────── */
+  const KNOWN_URLS = {
+    Singapore: [
+      { domain: "acra.gov.sg",              example: "https://www.acra.gov.sg/how-to-guides/setting-up-a-local-company" },
+      { domain: "iras.gov.sg",              example: "https://www.iras.gov.sg/taxes/corporate-income-tax/basics-of-corporate-income-tax" },
+      { domain: "mom.gov.sg",               example: "https://www.mom.gov.sg/passes-and-permits/employment-pass" },
+      { domain: "enterprisesg.gov.sg",      example: "https://www.enterprisesg.gov.sg/financial-support/grants" },
+      { domain: "singaporelegaladvice.com", example: "https://www.singaporelegaladvice.com/law-articles/incorporate-company-singapore/" },
+      { domain: "businesstimes.com.sg",     example: "https://www.businesstimes.com.sg/companies-markets/smes" },
+      { domain: "channelnewsasia.com",       example: "https://www.channelnewsasia.com/business" },
+      { domain: "3ecpa.com.sg",             example: "https://www.3ecpa.com.sg/singapore-company-incorporation/" },
+    ],
+    Malaysia: [
+      { domain: "ssm.com.my",   example: "https://www.ssm.com.my/Pages/Services/business_registration.aspx" },
+      { domain: "hasil.gov.my", example: "https://www.hasil.gov.my/en/corporate-tax/" },
+    ],
+    Australia: [
+      { domain: "ato.gov.au",  example: "https://www.ato.gov.au/business/starting-your-own-business/" },
+      { domain: "asic.gov.au", example: "https://asic.gov.au/for-business/registering-a-company/" },
+    ],
+    India: [
+      { domain: "mca.gov.in",        example: "https://www.mca.gov.in/content/mca/global/en/acts-rules/ebooks/acts.html" },
+      { domain: "incometax.gov.in",  example: "https://www.incometax.gov.in/iec/foportal/help/how-to-file-itr" },
+    ],
+  };
+  const urlExamples = (KNOWN_URLS[market] || KNOWN_URLS["Singapore"])
+    .map(u => `  ✅ ${u.domain} → use format like: ${u.example}`)
+    .join("\n");
 
   return `You are a senior SEO analyst. Produce a REALISTIC SERP analysis for "${S.topic}" in ${market}.
 
@@ -270,18 +300,23 @@ PAGE TYPE: ${pageType()}
 ${S.pageUrl ? `URL BEING OPTIMISED: ${S.pageUrl}` : ""}
 BRAND: ${brand}
 
-━━ CRITICAL URL RULES — READ CAREFULLY ━━
-You MUST use ONLY real, existing domains from this whitelist:
-  - ${allowedDomains}
+━━ CRITICAL URL RULES — STRICTLY ENFORCED ━━
+You MUST ONLY use URLs from KNOWN, VERIFIED domains. Below are the only allowed domains
+and example URL formats for ${market}:
 
-⛔ NEVER invent or fabricate domain names such as:
-   - bigfirm.sg, leadingfirm.sg, smesupport.sg, marketinsights.sg
-   - Any .sg / .my domain NOT in the whitelist above
-   - Any URL that does not exist on the live internet
+${urlExamples}
 
-✅ For URL slugs: use a PLAUSIBLE slug that could realistically exist on that domain.
-   e.g. "https://www.acra.gov.sg/how-to-guides/starting-a-company" is acceptable.
-   If you are not sure of the exact URL, use: "https://example.com/page-placeholder"
+⛔ ABSOLUTE PROHIBITIONS — violating these ruins the output:
+   - NEVER use Big 4 firm URLs (pwc.com, deloitte.com, ey.com, kpmg.com) — their exact page paths
+     for ${market} topics cannot be verified and will be wrong
+   - NEVER invent .sg or .my domains not in the list above
+   - NEVER use: bigfirm.sg, leadingfirm.sg, smesupport.sg, marketinsights.sg, or ANY similar invented domains
+   - NEVER guess a URL slug — if you are not 100% sure a page exists, use: https://example.com/placeholder
+
+✅ RULE: If a competitor would normally be a Big 4 firm, replace it with:
+   - The relevant government site (acra.gov.sg, iras.gov.sg, mom.gov.sg)
+   - OR a known Singapore legal/business media site from the list above
+   - OR https://example.com/placeholder
 
 TARGET LENGTH: ${rules.words.label} words (category: ${rules.description})
 TONE: ${rules.tone}
@@ -292,7 +327,7 @@ Return ONLY valid JSON — no markdown, no explanation:
     {
       "rank": 1,
       "title": "realistic page title",
-      "url": "https://[WHITELISTED-DOMAIN]/realistic-slug/",
+      "url": "https://[FROM-VERIFIED-LIST-ONLY]/slug/",
       "word_count": 2800,
       "sections": ["H2 Section 1", "H2 Section 2", "H2 Section 3", "H2 Section 4", "FAQ"],
       "has_faq": true,
@@ -300,16 +335,10 @@ Return ONLY valid JSON — no markdown, no explanation:
       "domain_authority": "High|Medium|Low"
     }
   ],
-  "top_topics": [
-    "specific topic competitors cover that's relevant to ${S.topic}"
-  ],
-  "content_gaps": [
-    "SPECIFIC gap: exact thing missing from current document that top competitors cover"
-  ],
+  "top_topics": ["specific topic competitors cover that's relevant to ${S.topic}"],
+  "content_gaps": ["SPECIFIC gap: exact thing missing from current document that top competitors cover"],
   "word_count_target": ${rules.words.min},
-  "recommended_sections": [
-    "H2 Section Name: why this section is needed for the ${market} audience"
-  ]
+  "recommended_sections": ["H2 Section Name: why this section is needed for the ${market} audience"]
 }
 
 Output: 5 competitors, 7 top_topics, 7 content_gaps, 6 recommended_sections.
@@ -419,7 +448,7 @@ ${serpData}
 CATEGORY STRUCTURE RULES FOR ${S.category.toUpperCase()}:
 ${S.category === "blogs" ? `
 REQUIRED H2 ORDER:
-1. Introduction context / What is [topic]?
+1. Introduction — What is [topic] and why it matters in ${market}? (120–180 words, set the scene)
 2. Why [topic] matters in ${market} / Key statistics
 3. The Process / How it works (step by step)
 4. Requirements / Eligibility / Types
@@ -432,17 +461,20 @@ REQUIRED H2 ORDER:
 11. Conclusion
 Each H2 should have 1–2 H3 sub-sections where it deepens the topic.` : ""}
 ${S.category === "services" ? `
+⚠️ MANDATORY: Section 1 MUST be "Introduction" — a 120–180 word overview that opens the page.
 REQUIRED H2 ORDER:
-1. What We Offer (overview with strong hook)
-2–5. Individual sub-services (one H2 per major service line, with H3s for sub-items)
-6. Why Choose ${brand} (differentiators)
-7. Our Process / How It Works (numbered steps)
-8. Pricing / Packages
-9. FAQ (${rules.faq.count} questions)
-NO TOC. NO CONCLUSION H2.` : ""}
+1. Introduction — professional opening paragraph about the service (is_intro: true)
+2. What We Offer — overview of the full service scope
+3–6. Individual sub-services (one H2 per major service line, with H3s for sub-items)
+7. Why Choose ${brand} (differentiators + trust signals)
+8. Our Process / How It Works (numbered steps)
+9. Pricing / Packages
+10. FAQ (${rules.faq.count} questions)
+NO TOC. NO CONCLUSION H2.
+Mark section 1 with "is_intro": true in your JSON.` : ""}
 ${S.category === "resources" ? `
 REQUIRED H2 ORDER:
-1. What is [topic]? / Overview & Definition
+1. Introduction — What is [topic]? / Overview & Definition (120–180 words)
 2. Why [topic] matters / Key Benefits for ${market} businesses
 3. Legal Framework / Regulatory Requirements in ${market}
 4. Types / Categories / Options
@@ -458,19 +490,21 @@ REQUIRED H2 ORDER:
 14. Conclusion / Summary
 Each H2 should have 2–3 H3 sub-sections.` : ""}
 ${S.category === "incorporation" ? `
+⚠️ MANDATORY: Section 1 MUST be "Introduction" (120–180 words, hybrid tone — briefly explain what this service/guide covers and why ${market} is the right choice).
 REQUIRED H2 ORDER:
-1. Why Incorporate in ${market}? / Key Advantages
-2. Types of Business Structures in ${market}
-3. Requirements for Company Incorporation in ${market}
-4. Step-by-Step Incorporation Process
-5. Costs & Government Fees (${year})
-6. Post-Incorporation Requirements / Compliance
-7. For Foreign Entrepreneurs / Special Considerations
-8. [SERP GAP SECTION]
-9. How ${brand} Makes Incorporation Seamless
-10. Our Incorporation Package / What's Included
-11. FAQ (${rules.faq.count} questions)
-12. Conclusion` : ""}
+1. Introduction — overview of the topic and why it matters (is_intro: true)
+2. Why Incorporate in ${market}? / Key Advantages
+3. Types of Business Structures in ${market}
+4. Requirements for Company Incorporation in ${market}
+5. Step-by-Step Incorporation Process
+6. Costs & Government Fees (${year})
+7. Post-Incorporation Requirements / Compliance
+8. For Foreign Entrepreneurs / Special Considerations
+9. [SERP GAP SECTION]
+10. How ${brand} Makes Incorporation Seamless
+11. Our Incorporation Package / What's Included
+12. FAQ (${rules.faq.count} questions)
+13. Conclusion` : ""}
 
 Return ONLY valid JSON — no markdown, no explanation:
 {
@@ -483,7 +517,8 @@ Return ONLY valid JSON — no markdown, no explanation:
       "intent": "What this section covers in 1 sentence",
       "words": 350,
       "is_cta": false,
-      "is_faq": false
+      "is_faq": false,
+      "is_intro": false
     }
   ],
   "meta_title": "50–60 char meta title with primary keyword",
@@ -611,30 +646,39 @@ ${Object.entries(INTERNAL_LINK_MAP).map(([k,v]) => `  ${siteBase || "https://www
 Choose the path most relevant to this section's topic. If none are relevant, omit links entirely.`
     : "";
 
+  const isIntro = isFirst || section.is_intro === true;
+
   /* ── INTRODUCTION ENFORCEMENT ───────────────────────────────────────────
-     The FIRST section of every page MUST be a proper Introduction.
+     The FIRST section (or any section marked is_intro:true) MUST be a proper Introduction.
      For services pages this is especially critical — it was the #1 reported gap.
   ──────────────────────────────────────────────────────────────────────── */
-  const introInstruction = isFirst ? `
-━━ MANDATORY INTRODUCTION (THIS IS SECTION 1 — INTRODUCTION IS REQUIRED) ━━
+  const introInstruction = isIntro ? `
+━━ MANDATORY INTRODUCTION (THIS IS THE INTRO SECTION) ━━
 ${S.category === "services" ? `
-This is a SERVICE PAGE. The introduction MUST:
-- Be 120–180 words (no shorter, no longer)
-- Open with a direct, benefit-led statement about what the service does for the client
-- Name the service clearly in the first sentence using the primary keyword
-- Briefly state who this service is for (SMEs, foreign founders, MNCs, etc.)
-- Mention 1–2 key proof points (e.g. years in operation, client count, licence status)
-- End with a micro-CTA directing readers to contact or scroll for more
-- Tone: professional and clear — NO storytelling hooks, NO "Let's be honest", NO "Here's the thing"
-- Format: 2–3 short paragraphs. NO bullet points in the intro.
+This is a SERVICE PAGE introduction. It MUST:
+- Be 120–180 words exactly (count before submitting)
+- First sentence must name the service clearly with the primary keyword
+- Second paragraph: who this is for (SMEs, foreign founders, MNCs, startups, etc.)
+- Third paragraph: 1–2 proof points (e.g. years in operation, client count, licensed status) + soft CTA
+- Tone: direct, professional, trust-building — NO casual hooks
+- ⛔ DO NOT use: "Let's be honest", "Here's the thing", "Navigating the complexities", "In today's fast-paced"
+- Format: 2–3 short paragraphs. NO bullet points. NO sub-headings.
+- Wrap entirely in <div class="new-block">...</div>
+` : S.category === "incorporation" ? `
+This is a HYBRID (education + conversion) introduction. It MUST:
+- Be 150–200 words
+- Open with why ${market} is a top business destination (1 real stat or fact)
+- Briefly describe what this guide covers
+- End with a one-line soft CTA pointing to the service
+- Wrap new content in <div class="new-block">...</div>
 ` : `
 This is the opening section. It MUST:
 - Be 150–200 words
 - Establish what the topic is and why it matters to ${market} readers
-- Set up what the reader will learn in this guide
-- Be informational — do not sell in the intro
+- Set up what the reader will learn
+- Informational tone — do not sell in the intro
+- Wrap new content in <div class="new-block">...</div>
 `}
-DO NOT skip or thin out the introduction. It is mandatory.
 ` : "";
 
   return `You are a world-class SEO content writer specialising in ${market} business content.
@@ -684,16 +728,21 @@ ${interlinksInstruction}
 4. Every paragraph must add unique value — no filler, no repetition
 5. Primary keyword must appear naturally at least once in this section
 6. Include specific ${market} facts: actual fees, real timelines, official body names, act references
-7. ${isFirst ? "First section: MANDATORY INTRODUCTION — follow the intro rules above exactly" : ""}
+7. ${isIntro ? "THIS IS THE INTRODUCTION SECTION — follow the intro rules above exactly. 120–180 words, no bullets, proper structure." : ""}
 8. ${isLast ? "Last section (if conclusion): summarize key takeaways and what the reader should do next" : ""}
 ${introInstruction}
 9. Every H3 section must be fully written — minimum ${Math.round(targetWords / (Math.max(section.h3s?.length || 1, 1) + 1))} words each
-10. Color coding rules:
-    - <div class="new-block">...</div> = content you are ADDING (not in original document)
-    - <div class="remove-block">...</div> = original content to be DELETED
-    - Content with NO wrapper = kept from original unchanged
-    - Most content should be in new-block since you're expanding
-    - DO NOT wrap absolutely everything in new-block if it came from the original
+10. COLOR CODING — THIS IS MANDATORY, NOT OPTIONAL:
+    ✅ <div class="new-block">...</div> = EVERY piece of content you are ADDING that was NOT in the original document
+    ❌ <div class="remove-block">...</div> = EVERY piece of original content that is OUTDATED, INCORRECT, or being REPLACED
+    ⬜ No wrapper = content kept from original UNCHANGED (use sparingly — most content should be in new-block)
+
+    RULES:
+    - You MUST use new-block on ALL new paragraphs, new bullet points, new sentences you write
+    - You MUST use remove-block on ANY original content that is thin, outdated, or replaced by your rewrite
+    - If the original document had a weak paragraph you are replacing → wrap it in remove-block first, then add your new-block version
+    - DO NOT leave expanded content unwrapped — if you wrote it, it goes in new-block
+    - Minimum: at least 3 new-block divs and at least 1 remove-block div per section (except FAQ and CTA)
 
 ━━ OUTPUT FORMAT ━━
 Return ONLY valid JSON — no markdown, no preamble:
@@ -781,8 +830,23 @@ ${bottomCta}
 7. Verify CTAs use the correct class (tool-cta, bottom-cta)
 8. ${rules.cta ? "Append the bottom-cta at the very end" : "No bottom CTA needed"}
 9. Ensure there are NO duplicate headings
-10. Verify internal links use ONLY real verified paths from https://www.3ecpa.com.sg — remove any link containing /relevant-page/, /page-placeholder/, or any fabricated slug
-11. Count total words — must be minimum ${rules.words.min}. If short, EXPAND the intro and conclusion.
+10. INTERNAL LINKS AUDIT — scan every <a href="..."> in the assembled HTML:
+    - REMOVE any link where the href contains: /relevant-page/, /placeholder/, /page-placeholder/, or any slug you cannot verify
+    - REPLACE with correct paths from this VERIFIED list only:
+      ${siteBase || "https://www.3ecpa.com.sg"}/singapore-company-incorporation/ → company incorporation
+      ${siteBase || "https://www.3ecpa.com.sg"}/accounting/ → accounting services
+      ${siteBase || "https://www.3ecpa.com.sg"}/taxation/ → taxation services
+      ${siteBase || "https://www.3ecpa.com.sg"}/corporate-secretarial/ → corporate secretarial
+      ${siteBase || "https://www.3ecpa.com.sg"}/virtual-office/ → virtual office
+      ${siteBase || "https://www.3ecpa.com.sg"}/immigration-work-pass/ → work pass / immigration
+      ${siteBase || "https://www.3ecpa.com.sg"}/human-resource/ → HR and payroll
+      ${siteBase || "https://www.3ecpa.com.sg"}/auditing/ → auditing services
+      ${siteBase || "https://www.3ecpa.com.sg"}/business-advisory/ → business advisory
+      ${siteBase || "https://www.3ecpa.com.sg"}/singapore-nominee-director-services/ → nominee director
+      ${siteBase || "https://www.3ecpa.com.sg"}/contact/ → contact / get a quote
+    - If no verified path fits the anchor context → remove the link entirely, keep the anchor text as plain text
+    - Maximum 8 internal links total in the full page
+11. Count total words — must be minimum ${rules.words.min}. If short, EXPAND the intro and first two body sections.
 
 ━━ SEO AUDIT ISSUES TO FIX ━━
 ${auditData}
