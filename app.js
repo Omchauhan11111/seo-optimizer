@@ -227,7 +227,7 @@ function parseJSON(raw) {
 /* ─────────────────────────────────────────────────────────────
    PROGRESS HELPERS
 ───────────────────────────────────────────────────────────── */
-const PHASE_IDS = ['ps-kw', 'ps-serp', 'ps-audit', 'ps-struct', 'ps-sections', 'ps-merge'];
+const PHASE_IDS = ['ps-kw', 'ps-serp', 'ps-audit', 'ps-struct', 'ps-sections', 'ps-merge', 'ps-humanize'];
 
 function phase(id, pct, txt) {
   PHASE_IDS.forEach(p => {
@@ -355,6 +355,27 @@ async function runOpt() {
       mergeD.url_slug = S.structure.url_slug || '';
     }
 
+    /* ── PHASE 7: Humanization Pass ── */
+    phase('ps-humanize', 92, 'Humanizing content to reduce AI detection…');
+    logStep('🧑‍💻 Running humanization pass…');
+
+    let finalHtml = mergeD.optimized_html || '';
+    try {
+      const humanizePrompt = pHumanize(finalHtml);
+      const humanizeR = await callAI(humanizePrompt);
+      /* The response should be raw HTML — strip any accidental markdown fences */
+      const cleanHumanized = (humanizeR || '').replace(/^```html?\s*/i, '').replace(/```\s*$/i, '').trim();
+      if (cleanHumanized && cleanHumanized.length > 200) {
+        finalHtml = cleanHumanized;
+        logStep('✅ Humanization complete — AI-detection risk reduced');
+      } else {
+        logStep('⚠️ Humanization returned short response — using original content');
+      }
+    } catch (humanizeErr) {
+      logStep('⚠️ Humanization step failed (' + humanizeErr.message + ') — using original content');
+      /* Non-fatal: continue with original merged HTML */
+    }
+
     /* Build final result */
     setP(100, 'Complete! ✅');
     PHASE_IDS.forEach(id => {
@@ -368,6 +389,7 @@ async function runOpt() {
       audit: auditD,
       opt: {
         ...mergeD,
+        optimized_html: finalHtml,
         changes_added: mergeD.changes_added || [],
         changes_removed: mergeD.changes_removed || []
       }
