@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>SOP 2 — SEO Optimization Process Explained</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Inter',sans-serif;background:#f4f7fc;color:#1a1a1a;padding:32px 20px 60px;}
+  .page{max-width:860px;margin:0 auto;}
+  .cover{background:linear-gradient(135deg,#0d6e3f 0%,#1a9e5f 100%);border-radius:16px;padding:40px 48px;margin-bottom:32px;color:#fff;}
+  .cover-tag{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;opacity:.6;margin-bottom:12px;}
+  .cover-title{font-size:32px;font-weight:900;line-height:1.2;margin-bottom:8px;}
+  .cover-sub{font-size:14px;opacity:.75;line-height:1.6;}
+  .cover-badges{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px;}
+  .cover-badge{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:99px;padding:4px 14px;font-size:12px;font-weight:600;}
+  .section{background:#fff;border-radius:14px;padding:28px 32px;margin-bottom:20px;box-shadow:0 2px 12px rgba(13,43,110,.06);}
+  .section-header{display:flex;align-items:center;gap:14px;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #f0f4fa;}
+  .phase-num{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;flex-shrink:0;color:#fff;}
+  .phase-title{font-size:18px;font-weight:800;color:#0d2b6e;}
+  .phase-sub{font-size:12px;color:#888;margin-top:2px;}
+  .body{line-height:1.7;font-size:14px;color:#333;}
+  .body p{margin-bottom:12px;}
+  .body ul,.body ol{padding-left:22px;margin-bottom:12px;}
+  .body li{margin-bottom:7px;}
+  .body strong{color:#0d2b6e;}
+  .tip{background:#e8f5e9;border-left:4px solid #0d6e3f;border-radius:0 8px 8px 0;padding:12px 16px;margin:12px 0;font-size:13px;}
+  .info{background:#e8f0fd;border-left:4px solid #1a4fad;border-radius:0 8px 8px 0;padding:12px 16px;margin:12px 0;font-size:13px;}
+  .warn{background:#fff3cd;border-left:4px solid #ffc107;border-radius:0 8px 8px 0;padding:12px 16px;margin:12px 0;font-size:13px;}
+  .code{background:#f4f7fc;border:1px solid #dde5f3;border-radius:6px;padding:2px 8px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#0d2b6e;}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin:14px 0;}
+  th{background:#0d2b6e;color:#fff;padding:8px 12px;text-align:left;font-weight:600;}
+  td{border:1px solid #dde5f3;padding:8px 12px;vertical-align:top;}
+  tr:nth-child(even) td{background:#f8faff;}
+  .phase-flow{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0;}
+  .phase-box{background:#f8faff;border:1.5px solid #dde5f3;border-radius:10px;padding:14px;text-align:center;}
+  .phase-box .ico{font-size:24px;margin-bottom:6px;}
+  .phase-box .lbl{font-size:11px;font-weight:700;color:#0d2b6e;}
+  .phase-box .desc{font-size:10px;color:#888;margin-top:3px;}
+  .prompt-box{background:#1a1a2e;border-radius:10px;padding:16px 20px;margin:14px 0;font-family:'JetBrains Mono',monospace;font-size:11px;color:#a8c7fa;line-height:1.7;}
+  .prompt-box .comment{color:#5c7a3e;}
+  .prompt-box .key{color:#79c7e3;}
+  .prompt-box .val{color:#f8d56e;}
+  .arch-table td:first-child{font-weight:700;color:#0d2b6e;white-space:nowrap;}
+  @media(max-width:600px){.phase-flow{grid-template-columns:1fr 1fr;}.cover{padding:24px;}.section{padding:20px;}}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="cover">
+    <div class="cover-tag">Standard Operating Procedure · SOP-002</div>
+    <div class="cover-title">SEO Optimization Process<br>How It Works — Technical & Editorial</div>
+    <div class="cover-sub">Understand the complete optimization pipeline: how the AI analyzes content, what each prompt does, how market detection works, how color-coding is applied, and how to interpret results.</div>
+    <div class="cover-badges">
+      <span class="cover-badge">4 AI Phases</span>
+      <span class="cover-badge">Dynamic Market Detection</span>
+      <span class="cover-badge">Color-Coded Output</span>
+      <span class="cover-badge">Version 3.0</span>
+    </div>
+  </div>
+
+  <!-- ARCHITECTURE -->
+  <div class="section">
+    <div class="section-header">
+      <div class="phase-num" style="background:#0d2b6e;">🏗</div>
+      <div><div class="phase-title">System Architecture — How Everything Connects</div><div class="phase-sub">File structure and data flow</div></div>
+    </div>
+    <div class="body">
+      <p>The tool is a <strong>pure client-side browser application</strong> — no server, no database, no data stored anywhere. Everything runs in your browser. Here's the file structure:</p>
+      <table class="arch-table">
+        <tr><th>File</th><th>Purpose</th><th>What's Inside</th></tr>
+        <tr><td>index.html</td><td>UI shell</td><td>All 6 step panels, report output HTML, modal dialogs, script loading order</td></tr>
+        <tr><td>styles.css</td><td>All styling</td><td>Colors, typography, layout, color-coding rules (new-block, remove-block), responsive breakpoints</td></tr>
+        <tr><td>config.js</td><td>Static configuration</td><td>All AI providers (OpenRouter/Gemini/DeepSeek/Anthropic), topic lists per category, optimization option definitions</td></tr>
+        <tr><td>prompts.js</td><td>AI prompt logic</td><td>4 prompt builder functions (pKw, pSERP, pAudit, pOpt), market detection, brand detection, prompt editor system</td></tr>
+        <tr><td>app.js</td><td>Application logic</td><td>Navigation, file reading, URL fetching, API calls, JSON parsing, report rendering, DOCX generation</td></tr>
+      </table>
+      <div class="phase-flow">
+        <div class="phase-box"><div class="ico">📄</div><div class="lbl">Content In</div><div class="desc">DOCX or URL fetch</div></div>
+        <div class="phase-box"><div class="ico">🔍</div><div class="lbl">3 Analysis Calls</div><div class="desc">Keywords → SERP → Audit</div></div>
+        <div class="phase-box"><div class="ico">✍️</div><div class="lbl">1 Optimization Call</div><div class="desc">Full rewrite with context</div></div>
+        <div class="phase-box"><div class="ico">📊</div><div class="lbl">Report Built</div><div class="desc">Score + content + download</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTENT LOADING -->
+  <div class="section">
+    <div class="section-header">
+      <div class="phase-num" style="background:#1a4fad;">📥</div>
+      <div><div class="phase-title">Phase 0 — Content Loading & Extraction</div><div class="phase-sub">How DOCX and URL content is parsed</div></div>
+    </div>
+    <div class="body">
+      <p><strong>DOCX Mode (mammoth.js library):</strong></p>
+      <ul>
+        <li>The uploaded .docx file is read as an ArrayBuffer by FileReader</li>
+        <li>Mammoth converts it to HTML using custom style maps (heading styles → H1/H2/H3, custom paragraph styles → FAQ Q/A)</li>
+        <li>A structured text extraction function walks the HTML DOM, adding <code class="code">H1:</code>, <code class="code">H2:</code>, <code class="code">FAQ Q:</code>, <code class="code">FAQ A:</code> prefixes for AI context</li>
+        <li>Tables are extracted as pipe-separated rows: <code class="code">| Cell 1 | Cell 2 |</code></li>
+        <li><strong>Limitation:</strong> WordPress accordion FAQ answers and TOC plugins are JavaScript-rendered — they don't exist in the DOCX file at all</li>
+      </ul>
+      <p><strong>URL Fetch Mode (recommended for WordPress pages):</strong></p>
+      <ul>
+        <li>The live URL is fetched through a CORS proxy (allorigins.win → corsproxy.io → cors-anywhere, tried in order)</li>
+        <li>The full rendered HTML is parsed by DOMParser — this includes all accordion content that is in the DOM even if hidden via CSS</li>
+        <li>Hidden divs (class="hidden", style="display:none") are explicitly made visible before text extraction</li>
+        <li>TOC links (lwptoc plugin, Easy TOC, etc.) are extracted and prepended as a structured list</li>
+        <li>Accordion questions and answers are detected by class names: <code class="code">accordion_title</code>, <code class="code">accordion_content</code>, <code class="code">faq-q</code>, <code class="code">faq-a</code>, <code class="code">common_content_style</code></li>
+        <li>Navigation, headers, footers, sidebars, and widgets are stripped to keep only page body content</li>
+      </ul>
+      <div class="tip">✅ URL fetch extracts <strong>exactly what Google's crawler sees</strong> — the actual text content of your live page including all dynamic elements.</div>
+    </div>
+  </div>
+
+  <!-- MARKET DETECTION -->
+  <div class="section">
+    <div class="section-header">
+      <div class="phase-num" style="background:#6366f1;">🌍</div>
+      <div><div class="phase-title">Market & Brand Detection</div><div class="phase-sub">How the AI knows which country/company you're optimizing for</div></div>
+    </div>
+    <div class="body">
+      <p>The <code class="code">detectMarket()</code> function runs before every AI call. It determines the target country in this priority order:</p>
+      <ol>
+        <li><strong>Page URL domain extension</strong> (most reliable): <code class="code">.my</code> → Malaysia, <code class="code">.sg</code> → Singapore, <code class="code">.com.au</code> → Australia, <code class="code">.in</code> → India, <code class="code">.hk</code> → Hong Kong</li>
+        <li><strong>URL path/subdomain keywords</strong>: <code class="code">/singapore/</code>, <code class="code">/malaysia/</code> in the URL</li>
+        <li><strong>Document text signal counting</strong>: counts occurrences of country-specific terms (e.g. "Ringgit/RM/SSM/Sdn Bhd" = Malaysia; "ACRA/CPF/SGD/Pte Ltd" = Singapore). Needs 2+ signals to trigger</li>
+        <li><strong>Topic text</strong>: if topic contains "singapore" or "malaysia"</li>
+        <li><strong>Fallback</strong>: uses "the target market" (generic) — this triggers when no URL is provided</li>
+      </ol>
+      <p>The <code class="code">detectBrand()</code> function extracts the company name from the domain: <code class="code">3ecpa.com.my</code> → <code class="code">3ecpa</code>, then capitalizes it.</p>
+      <div class="warn">⚠️ <strong>Always enter the Page URL in Step 4.</strong> Without it, market detection falls to document text scanning which may be unreliable. The URL domain is the fastest and most accurate signal.</div>
+    </div>
+  </div>
+
+  <!-- 4 AI PHASES -->
+  <div class="section">
+    <div class="section-header">
+      <div class="phase-num" style="background:#0891b2;">🤖</div>
+      <div><div class="phase-title">The 4 AI Calls — What Each One Does</div><div class="phase-sub">Sequential API calls: each feeds context into the next</div></div>
+    </div>
+    <div class="body">
+      <p>The tool makes <strong>4 sequential API calls</strong>. Each call's output is fed as context into the next, building a progressively richer picture of the content.</p>
+
+      <p><strong>Call 1 — Keyword Research (<code class="code">pKw()</code>)</strong></p>
+      <ul>
+        <li>Sends: document preview (first 3,000 chars), topic, category, page type, market, page URL</li>
+        <li>Returns: 14 keywords as JSON → 3 primary, 5 secondary, 6 LSI with volume/difficulty/intent</li>
+        <li>How market affects output: adds country modifier to keywords (e.g. "HR outsourcing <strong>Malaysia</strong>")</li>
+        <li>How doc affects output: keywords are derived from actual content found in the document, not generated generically</li>
+      </ul>
+
+      <p><strong>Call 2 — SERP Analysis (<code class="code">pSERP()</code>)</strong></p>
+      <ul>
+        <li>Sends: document preview (2,000 chars), topic, market, page URL, page type</li>
+        <li>Returns: 5 competitor pages with URLs, word counts, sections, FAQ/table flags, content gaps, word count target, recommended sections</li>
+        <li>The AI generates realistic competitor data for the correct country — Malaysian competitors for .my sites, Singaporean for .sg sites</li>
+        <li><code class="code">word_count_target</code>: 850 for service pages, 2,500 for blog/guides</li>
+      </ul>
+
+      <p><strong>Call 3 — SEO Audit (<code class="code">pAudit()</code>)</strong></p>
+      <ul>
+        <li>Sends: full document (up to 4,500 chars), topic, market, word count, URL</li>
+        <li>Returns: score_before (honest current state), score_after (projected), breakdown by 6 dimensions, issues_fail/warn/pass</li>
+        <li>Score calculation: based on actual word count and content quality observed, not inflated</li>
+        <li>Issues are specific to the actual text — references real problems found in the document</li>
+      </ul>
+
+      <p><strong>Call 4 — Content Optimization (<code class="code">pOpt()</code>)</strong></p>
+      <ul>
+        <li>Sends: full document (5,500 chars), all 3 previous results, all checked option rules, market, brand, site URL, year, additional instructions</li>
+        <li>Returns: meta_title, meta_description, url_slug, h1, optimized_html (full page), changes_added, changes_removed</li>
+        <li>Content minimums enforced: 800w for service pages, 2,200w for blog/guides</li>
+        <li>Internal links use extracted site base URL: <code class="code">https://www.3ecpa.com.my/</code></li>
+      </ul>
+      <div class="info">ℹ️ <strong>Why sequential?</strong> The optimization call (Call 4) needs the keyword list and SERP gaps to know what to add, and the audit to know what's broken. Feeding all three as context produces far better output than one combined prompt.</div>
+    </div>
+  </div>
+
+  <!-- COLOR CODING -->
+  <div class="section">
+    <div class="section-header">
+      <div class="phase-num" style="background:#0d6e3f;">🎨</div>
+      <div><div class="phase-title">Color-Coding System — How Changes Are Marked</div><div class="phase-sub">Green = add, Red = delete, White = keep</div></div>
+    </div>
+    <div class="body">
+      <p>The AI is instructed to wrap its output in specific HTML classes. CSS in <code class="code">styles.css</code> applies visual styling:</p>
+      <table>
+        <tr><th>HTML Class</th><th>Display</th><th>Meaning</th><th>Action for Editor</th></tr>
+        <tr><td><code class="code">div.new-block</code></td><td style="color:#0d6e3f;font-weight:700;">Green background</td><td>Entire new section added</td><td>ADD this section to your page</td></tr>
+        <tr><td><code class="code">div.remove-block</code></td><td style="color:#c0392b;font-weight:700;text-decoration:line-through;">Red + strikethrough</td><td>Existing section to delete</td><td>REMOVE this from your page</td></tr>
+        <tr><td><code class="code">span.new-inline</code></td><td style="color:#0d6e3f;">Green highlight</td><td>Word/phrase added inline</td><td>Add this word/phrase in context</td></tr>
+        <tr><td><code class="code">span.remove-inline</code></td><td style="color:#c0392b;text-decoration:line-through;">Red strikethrough inline</td><td>Word/phrase to delete inline</td><td>Delete this word/phrase</td></tr>
+        <tr><td>No wrapper</td><td>Normal white</td><td>Keep exactly as-is</td><td>DO NOT change this content</td></tr>
+      </table>
+      <p><strong>How to implement changes in WordPress:</strong></p>
+      <ol>
+        <li>Open the optimized content section in the report</li>
+        <li>Read through from top to bottom</li>
+        <li>For each <strong style="color:#0d6e3f;">GREEN</strong> section: copy the content and paste it into your WordPress editor at the indicated position</li>
+        <li>For each <strong style="color:#c0392b;">RED</strong> section: find and delete the equivalent text from your WordPress page</li>
+        <li>White/normal content: leave unchanged in WordPress</li>
+        <li>Update meta title and description in your SEO plugin (Yoast, Rank Math, etc.)</li>
+      </ol>
+      <div class="tip">✅ <strong>Best practice:</strong> Download the HTML report and open it alongside your WordPress editor. Work through the changes section by section.</div>
+    </div>
+  </div>
+
+  <!-- PROMPT SYSTEM -->
+  <div class="section">
+    <div class="section-header">
+      <div class="phase-num" style="background:#7c3aed;">✏️</div>
+      <div><div class="phase-title">Editable Prompt System</div><div class="phase-sub">How to customize AI instructions for specific pages</div></div>
+    </div>
+    <div class="body">
+      <p>In Step 5, clicking <strong>"👁 Preview & Edit AI Prompts"</strong> opens a panel showing the 3 analysis prompts before they run. This is useful when:</p>
+      <ul>
+        <li>You want to add industry-specific context the AI might not know</li>
+        <li>You want to change the competitor sites for SERP analysis</li>
+        <li>You need to adjust scoring criteria for a specific content type</li>
+        <li>A prompt keeps producing wrong output for a particular page type</li>
+      </ul>
+      <p><strong>How it works:</strong></p>
+      <ul>
+        <li>Prompts are built fresh from the current document, topic, market, and URL every time you click the button</li>
+        <li>Clicking "Edit Prompt" on any prompt opens a full-screen editor with the live-generated text</li>
+        <li>Your edits are saved in <code class="code">window.promptOverrides</code> for the current session only</li>
+        <li>Edited prompts show an [EDITED] badge so you know which ones are customized</li>
+        <li>"↩ Reset" restores the auto-generated default</li>
+        <li>The optimization prompt (Call 4) is <strong>always auto-generated</strong> — it combines the outputs of Calls 1-3, so editing it beforehand isn't possible</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- OUTPUT INTERPRETATION -->
+  <div class="section">
+    <div class="section-header">
+      <div class="phase-num" style="background:#c87000;">📊</div>
+      <div><div class="phase-title">Score Interpretation</div><div class="phase-sub">What the numbers mean</div></div>
+    </div>
+    <div class="body">
+      <table>
+        <tr><th>Score Range</th><th>Meaning</th><th>Typical Cause</th></tr>
+        <tr><td>10–25</td><td>Very poor — needs complete rewrite</td><td>Thin content (&lt;300w), no headings, no keywords</td></tr>
+        <tr><td>25–45</td><td>Poor — significant gaps</td><td>Short content, missing structure, no CTAs</td></tr>
+        <tr><td>45–65</td><td>Average — exists but underoptimized</td><td>Decent content but lacks keywords, freshness, E-E-A-T</td></tr>
+        <tr><td>65–80</td><td>Good — minor improvements needed</td><td>Solid content, some keyword/structure gaps</td></tr>
+        <tr><td>80–92</td><td>Excellent — well optimized</td><td>Full optimization applied</td></tr>
+      </table>
+      <p><strong>Score breakdown dimensions:</strong></p>
+      <ul>
+        <li><strong>Content Depth</strong> — word count, comprehensiveness, sub-topic coverage</li>
+        <li><strong>Keyword Usage</strong> — primary/secondary keywords in headings, density, LSI usage</li>
+        <li><strong>Content Freshness</strong> — current year data, updated fees/regulations/stats</li>
+        <li><strong>Structure / UX</strong> — heading hierarchy, TOC, bullet lists, readability</li>
+        <li><strong>E-E-A-T Signals</strong> — expertise/authority indicators, citations, credentials</li>
+        <li><strong>CTA / Conversion</strong> — call-to-action presence, internal links, contact pathways</li>
+      </ul>
+    </div>
+  </div>
+
+  <div style="text-align:center;color:#999;font-size:12px;margin-top:24px;">SOP-002 · SEO Optimizer Technical & Editorial Process v3.0 · Prepared for internal use</div>
+</div>
+</body>
+</html>
