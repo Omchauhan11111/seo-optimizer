@@ -10,7 +10,6 @@ const S = {
   prov: 'openrouter', key: '', model: '', docxFile: null, docxText: '',
   category: '', topic: '', topicLabel: '', result: null, kws: [],
   currentStep: 1, pageUrl: '',
-  /* New state for section-wise */
   structure: null, sectionsHtml: [], generationLog: []
 };
 
@@ -23,31 +22,33 @@ const S = {
   Object.values(PROV).forEach((p, i) => {
     const t = document.createElement('button');
     t.className = 'prov-tab' + (i === 0 ? ' active' : '');
-    t.textContent = p.label; t.onclick = () => switchProv([p.id](http://p.id));
+    t.textContent = p.label;
+    t.onclick = () => switchProv(p.id);
     tabs.appendChild(t);
+
     const d = document.createElement('div');
-    [d.id](http://d.id) = 'pp-' + [p.id](http://p.id); [d.style](http://d.style).display = i === 0 ? 'block' : 'none';
-    d.innerHTML = <div class="alert alert-${[p.at](http://p.at)}" style="margin-bottom:12px;"><span>${[p.at](http://p.at) === 'green' ? '🆓' : [p.at](http://p.at) === 'yellow' ? '⚠️' : '💡'}</span><div>${[p.at](http://p.at)_txt}</div></div>
-<div class="field"><label class="label">${p.label} API Key</label><input type="password" id="k-${[p.id](http://p.id)}" placeholder="${[p.ph](http://p.ph)}" autocomplete="off"><div class="hint">${p.hint}</div></div>
-<div class="field"><label class="label">Model</label><select id="m-${[p.id](http://p.id)}">${[p.models.map](http://p.models.map)(g => <optgroup label="── ${g.g} ──">${[g.opts.map](http://g.opts.map)((o, oi) => <option value="${o.v}"${oi === 0 ? ' selected' : ''}>${o.l}</option>).join('')}</optgroup>).join('')}</select><div class="hint">${p.fn}</div></div>;
+    d.id = 'pp-' + p.id;
+    d.style.display = i === 0 ? 'block' : 'none';
+    d.innerHTML = `<div class="alert alert-${p.at}" style="margin-bottom:12px;"><span>${p.at === 'green' ? '🆓' : p.at === 'yellow' ? '⚠️' : '💡'}</span><div>${p.at_txt}</div></div>
+<div class="field"><label class="label">${p.label} API Key</label><input type="password" id="k-${p.id}" placeholder="${p.ph}" autocomplete="off"><div class="hint">${p.hint}</div></div>
+<div class="field"><label class="label">Model</label><select id="m-${p.id}">${p.models.map(g => `<optgroup label="── ${g.g} ──">${g.opts.map((o, oi) => `<option value="${o.v}"${oi === 0 ? ' selected' : ''}>${o.l}</option>`).join('')}</optgroup>`).join('')}</select><div class="hint">${p.fn}</div></div>`;
+
     panels.appendChild(d);
-     if ([p.id](http://p.id) === "custom") {
-  d.innerHTML += 
-  <div class="field">
-    <label class="label">Base URL</label>
-    <input type="text" id="custom-base-url"
-      placeholder="https://api.groq.com or http://localhost:11434"
-      autocomplete="off">
-    <div class="hint">OpenAI-compatible endpoint (without /v1/chat/completions)</div>
-  </div>
-  <div class="field">
-    <label class="label">Model Name</label>
-    <input type="text" id="custom-model-input"
-      placeholder="e.g. llama3-8b-8192 or mistral-7b"
-      autocomplete="off">
-    <div class="hint">Exact model name as required by the provider</div>
-  </div>;
-}
+
+    /* ✅ Custom provider — extra fields inject */
+    if (p.id === 'custom') {
+      d.innerHTML += `
+<div class="field">
+  <label class="label">Base URL</label>
+  <input type="text" id="custom-base-url" placeholder="https://api.groq.com or http://localhost:11434" autocomplete="off">
+  <div class="hint">OpenAI-compatible endpoint (without /v1/chat/completions)</div>
+</div>
+<div class="field">
+  <label class="label">Model Name</label>
+  <input type="text" id="custom-model-input" placeholder="e.g. llama3-8b-8192 or mistral-7b" autocomplete="off">
+  <div class="hint">Exact model name as required by the provider</div>
+</div>`;
+    }
   });
 })();
 
@@ -98,15 +99,14 @@ function validateAPI() {
   const k = (document.getElementById('k-' + S.prov)?.value || '').trim();
   const eb = document.getElementById('api-err');
   const et = document.getElementById('api-err-txt');
-  [eb.style](http://eb.style).display = 'none';
-  if (!k) { [eb.style](http://eb.style).display = 'flex'; et.innerHTML = 'Please enter your ' + p.label + ' API key.'; return; }
-  if ([p.kp](http://p.kp) && !k.startsWith([p.kp](http://p.kp))) { [eb.style](http://eb.style).display = 'flex'; et.innerHTML = '<strong>Wrong format!</strong> ' + p.label + ' keys start with <code>' + [p.kp](http://p.kp) + '…</code>'; return; }
+  eb.style.display = 'none';
+  if (!k) { eb.style.display = 'flex'; et.innerHTML = 'Please enter your ' + p.label + ' API key.'; return; }
+  if (p.kp && !k.startsWith(p.kp)) { eb.style.display = 'flex'; et.innerHTML = '<strong>Wrong format!</strong> ' + p.label + ' keys start with <code>' + p.kp + '…</code>'; return; }
   S.key = k; S.model = document.getElementById('m-' + S.prov)?.value || '';
   document.getElementById('step1').style.display = 'none';
   document.getElementById('step2').style.display = 'block';
   setStep(2);
 }
-
 
 /* ─────────────────────────────────────────────────────────────
    STEP 2 — UPLOAD
@@ -306,10 +306,6 @@ async function runOpt() {
     const serpPrompt = window.promptOverrides?.serp || pSERP();
     const serpR = await callAI(serpPrompt);
     const serpD = parseJSON(serpR) || {};
-    /* ── SERP URL VALIDATOR ──────────────────────────────────────────────
-       Strip fabricated URLs before they reach the rendered report.
-       Only domains in ALLOWED_SERP_DOMAINS pass through; others → example.com
-    ──────────────────────────────────────────────────────────────────────── */
     const ALLOWED_SERP_DOMAINS = [
       'acra.gov.sg', 'iras.gov.sg', 'mom.gov.sg', 'mlaw.gov.sg',
       'enterprisesg.gov.sg', 'singaporelegaladvice.com', 'businesstimes.com.sg',
@@ -321,17 +317,12 @@ async function runOpt() {
       try {
         const hostname = new URL(url).hostname.replace(/^www\./, '');
         return ALLOWED_SERP_DOMAINS.some(d => hostname === d || hostname.endsWith('.' + d))
-          ? url
-          : 'https://example.com/placeholder';
+          ? url : 'https://example.com/placeholder';
       } catch (e) { return 'https://example.com/placeholder'; }
     }
     if (serpD.serp_competitors) {
-      serpD.serp_competitors = serpD.serp_competitors.map(c => ({
-        ...c,
-        url: validateSerpUrl(c.url || '')
-      }));
+      serpD.serp_competitors = serpD.serp_competitors.map(c => ({ ...c, url: validateSerpUrl(c.url || '') }));
     }
-
     logStep(`✅ SERP: ${(serpD.content_gaps || []).length} gaps identified`);
 
     /* ── PHASE 3: SEO Audit ── */
@@ -377,7 +368,6 @@ async function runOpt() {
         h2: section.h2,
         preview: (sectionD.preview || html.replace(/<[^>]+>/g, '').slice(0, 100))
       });
-
       logStep(`✅ Section ${i + 1} done — ~${wordCount} words`);
     }
 
@@ -390,7 +380,6 @@ async function runOpt() {
     const mergeR = await callAI(mergePrompt);
     const mergeD = parseJSON(mergeR) || {};
 
-    /* Fallback: if merge fails, assemble manually */
     if (!mergeD.optimized_html) {
       logStep('⚠️ Merge parse failed — using direct assembly');
       mergeD.optimized_html = buildFallbackHtml(S.structure, S.sectionsHtml);
@@ -407,7 +396,6 @@ async function runOpt() {
     try {
       const humanizePrompt = pHumanize(finalHtml);
       const humanizeR = await callAI(humanizePrompt);
-      /* The response should be raw HTML — strip any accidental markdown fences */
       const cleanHumanized = (humanizeR || '').replace(/^```html?\s*/i, '').replace(/```\s*$/i, '').trim();
       if (cleanHumanized && cleanHumanized.length > 200) {
         finalHtml = cleanHumanized;
@@ -417,14 +405,9 @@ async function runOpt() {
       }
     } catch (humanizeErr) {
       logStep('⚠️ Humanization step failed (' + humanizeErr.message + ') — using original content');
-      /* Non-fatal: continue with original merged HTML */
     }
 
-    /* ── INTERNAL LINK SCRUBBER ─────────────────────────────────────────────
-       Remove any href that contains placeholder/fabricated slugs.
-       Replaces the href with the contact page as a safe fallback,
-       or strips the <a> tag entirely if no mapping found.
-    ──────────────────────────────────────────────────────────────────────── */
+    /* ── INTERNAL LINK SCRUBBER ── */
     const VERIFIED_PATHS = [
       '/singapore-company-incorporation/', '/accounting/', '/taxation/',
       '/corporate-secretarial/', '/virtual-office/', '/immigration-work-pass/',
@@ -436,19 +419,13 @@ async function runOpt() {
     try { siteBaseForScrub = new URL(S.pageUrl || '').origin; } catch (e) { siteBaseForScrub = 'https://www.3ecpa.com.sg'; }
 
     finalHtml = finalHtml.replace(/href="([^"]+)"/g, (match, href) => {
-      // External links — don't touch
       if (href.startsWith('http') && !href.includes('3ecpa.com.sg')) return match;
-      // Internal or relative links — validate the path
       let path = href.replace(siteBaseForScrub, '').replace('https://www.3ecpa.com.sg', '').replace('https://3ecpa.com.sg', '');
       const isVerified = VERIFIED_PATHS.some(vp => path === vp || path.startsWith(vp));
-      if (!isVerified) {
-        // Fabricated slug → replace with contact
-        return `href="${siteBaseForScrub}/contact/"`;
-      }
+      if (!isVerified) return `href="${siteBaseForScrub}/contact/"`;
       return match;
     });
 
-    /* Build final result */
     setP(100, 'Complete! ✅');
     PHASE_IDS.forEach(id => {
       const el = document.getElementById(id);
@@ -480,7 +457,7 @@ async function runOpt() {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   FALLBACK HTML ASSEMBLER (if merge AI call fails)
+   FALLBACK HTML ASSEMBLER
 ───────────────────────────────────────────────────────────── */
 function buildFallbackHtml(structure, sectionsHtml) {
   const rules = CATEGORY_RULES[S.category] || CATEGORY_RULES.blogs;
@@ -527,13 +504,11 @@ function renderReport() {
   document.getElementById('output-section').classList.add('show');
   document.getElementById('step5').style.display = 'none';
 
-  /* Badges */
   const nA = (opt.changes_added || []).length, nR = (opt.changes_removed || []).length;
   document.getElementById('badge-added').textContent = '+' + nA + ' Added';
   document.getElementById('badge-removed').textContent = '-' + nR + ' Removed';
   document.getElementById('badge-score').textContent = 'Score: ' + (audit.score_before || '—') + '→' + (audit.score_after || '—');
 
-  /* Scores */
   document.getElementById('sc-before').textContent = audit.score_before || '—';
   document.getElementById('sc-after').textContent = audit.score_after || '—';
   const sb = audit.score_breakdown || {};
@@ -558,7 +533,6 @@ function renderReport() {
     <div class="score-metric"><div class="sm-num" style="color:#fbbf24;">${S.kws.length}</div><div class="sm-lbl">Keywords</div></div>
     <div class="score-metric"><div class="sm-num" style="color:#93c5fd;">${S.sectionsHtml.length}</div><div class="sm-lbl">Sections</div></div>`;
 
-  /* Keywords */
   document.getElementById('kw-body').innerHTML = (S.kws || []).map(k => `
     <tr>
       <td><strong>${k.keyword}</strong></td>
@@ -568,7 +542,6 @@ function renderReport() {
       <td style="font-size:12px;color:#666;">${k.intent || '—'}</td>
     </tr>`).join('');
 
-  /* SERP */
   document.getElementById('serp-cards').innerHTML = (serp.serp_competitors || []).map(c => `
     <div class="serp-card">
       <div class="serp-title"><span class="serp-rank">${c.rank}</span>${c.title}</div>
@@ -581,17 +554,14 @@ function renderReport() {
       </div>
     </div>`).join('');
 
-  /* Audit */
   const ai = (item, type) => `<div class="audit-item"><div class="audit-ico ${type}">${type === 'fail' ? '❌' : type === 'warn' ? '⚠️' : '✅'}</div><div><span class="audit-lbl">${item.label}</span><span class="audit-det">${item.detail}</span></div></div>`;
   document.getElementById('audit-fail').innerHTML = (audit.issues_fail || []).map(i => ai(i, 'fail')).join('') || '<p style="color:#888;font-size:13px;">None found</p>';
   document.getElementById('audit-warn').innerHTML = (audit.issues_warn || []).map(i => ai(i, 'warn')).join('') || '<p style="color:#888;font-size:13px;">None found</p>';
   document.getElementById('audit-pass').innerHTML = (audit.issues_pass || []).map(i => ai(i, 'pass')).join('') || '<p style="color:#888;font-size:13px;">None found</p>';
 
-  /* Gaps */
   document.getElementById('gap-topics').innerHTML = (serp.top_topics || []).map(t => `<div class="gap-item"><span style="color:#1a4fad;font-size:16px;">•</span>${t}</div>`).join('');
   document.getElementById('gap-missing').innerHTML = (serp.content_gaps || []).map(g => `<div class="gap-item"><span style="color:#c87000;">⚡</span>${g}</div>`).join('');
 
-  /* Changes */
   const added = opt.changes_added || [];
   const removed = opt.changes_removed || [];
   if (added.length || removed.length) {
@@ -601,7 +571,6 @@ function renderReport() {
     document.getElementById('changes-removed-list').innerHTML = removed.map(c => `<div class="gap-item"><span style="color:#c0392b;font-size:16px;">-</span><div><strong style="text-decoration:line-through;">${c.title}</strong><br><span style="font-size:12px;color:#666;">${c.detail}</span></div></div>`).join('') || '<p style="color:#888;font-size:13px;">None</p>';
   }
 
-  /* Section breakdown panel */
   if (S.structure?.sections) {
     document.getElementById('rpt-sections').style.display = 'block';
     document.getElementById('sections-nav-li').style.display = 'list-item';
@@ -618,13 +587,9 @@ function renderReport() {
       </div>`).join('');
   }
 
-  /* Generation log — intentionally NOT rendered in output.
-     Logs are internal-only (visible during generation in gen-log-wrap).
-     They must NOT appear in the final report or downloaded HTML. */
   const logSection = document.getElementById('rpt-log');
   if (logSection) logSection.style.display = 'none';
 
-  /* Blog body */
   const metaBox = `<div class="meta-output-box">
     <strong>📌 Meta Title:</strong> <span class="meta-val">${opt.meta_title || ''}</span><br>
     <strong>📌 Meta Description:</strong> <span class="meta-val">${opt.meta_description || ''}</span><br>
@@ -632,13 +597,11 @@ function renderReport() {
   </div>`;
   document.getElementById('blog-body').innerHTML = metaBox + (opt.optimized_html || '<p style="color:#888;">No content was generated. Please try again.</p>');
 
-  /* Activate FAQ toggles */
   document.querySelectorAll('.faq-item').forEach(fi => {
     const q = fi.querySelector('.faq-q');
     if (q) q.addEventListener('click', () => fi.classList.toggle('open'));
   });
 
-  /* Word count of final output */
   const finalText = (opt.optimized_html || '').replace(/<[^>]+>/g, ' ');
   const finalWc = finalText.split(/\s+/).filter(Boolean).length;
   document.getElementById('final-wc').textContent = finalWc.toLocaleString() + ' words in final output';
@@ -687,7 +650,7 @@ async function dlDOCX() {
 
   btn.innerHTML = '<span class="spinner spinner-dark"></span> Building DOCX…'; btn.disabled = true;
   try {
-    const { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, WidthType } = docxLib;
+    const { Document, Packer, Paragraph, TextRun, HeadingLevel } = docxLib;
     const tmp = document.createElement('div');
     tmp.innerHTML = opt.optimized_html || '';
     const ch = [];
