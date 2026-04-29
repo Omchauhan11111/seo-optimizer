@@ -23,14 +23,31 @@ const S = {
   Object.values(PROV).forEach((p, i) => {
     const t = document.createElement('button');
     t.className = 'prov-tab' + (i === 0 ? ' active' : '');
-    t.textContent = p.label; t.onclick = () => switchProv(p.id);
+    t.textContent = p.label; t.onclick = () => switchProv([p.id](http://p.id));
     tabs.appendChild(t);
     const d = document.createElement('div');
-    d.id = 'pp-' + p.id; d.style.display = i === 0 ? 'block' : 'none';
-    d.innerHTML = `<div class="alert alert-${p.at}" style="margin-bottom:12px;"><span>${p.at === 'green' ? '🆓' : p.at === 'yellow' ? '⚠️' : '💡'}</span><div>${p.at_txt}</div></div>
-<div class="field"><label class="label">${p.label} API Key</label><input type="password" id="k-${p.id}" placeholder="${p.ph}" autocomplete="off"><div class="hint">${p.hint}</div></div>
-<div class="field"><label class="label">Model</label><select id="m-${p.id}">${p.models.map(g => `<optgroup label="── ${g.g} ──">${g.opts.map((o, oi) => `<option value="${o.v}"${oi === 0 ? ' selected' : ''}>${o.l}</option>`).join('')}</optgroup>`).join('')}</select><div class="hint">${p.fn}</div></div>`;
+    [d.id](http://d.id) = 'pp-' + [p.id](http://p.id); [d.style](http://d.style).display = i === 0 ? 'block' : 'none';
+    d.innerHTML = <div class="alert alert-${[p.at](http://p.at)}" style="margin-bottom:12px;"><span>${[p.at](http://p.at) === 'green' ? '🆓' : [p.at](http://p.at) === 'yellow' ? '⚠️' : '💡'}</span><div>${[p.at](http://p.at)_txt}</div></div>
+<div class="field"><label class="label">${p.label} API Key</label><input type="password" id="k-${[p.id](http://p.id)}" placeholder="${[p.ph](http://p.ph)}" autocomplete="off"><div class="hint">${p.hint}</div></div>
+<div class="field"><label class="label">Model</label><select id="m-${[p.id](http://p.id)}">${[p.models.map](http://p.models.map)(g => <optgroup label="── ${g.g} ──">${[g.opts.map](http://g.opts.map)((o, oi) => <option value="${o.v}"${oi === 0 ? ' selected' : ''}>${o.l}</option>).join('')}</optgroup>).join('')}</select><div class="hint">${p.fn}</div></div>;
     panels.appendChild(d);
+     if ([p.id](http://p.id) === "custom") {
+  d.innerHTML += 
+  <div class="field">
+    <label class="label">Base URL</label>
+    <input type="text" id="custom-base-url"
+      placeholder="https://api.groq.com or http://localhost:11434"
+      autocomplete="off">
+    <div class="hint">OpenAI-compatible endpoint (without /v1/chat/completions)</div>
+  </div>
+  <div class="field">
+    <label class="label">Model Name</label>
+    <input type="text" id="custom-model-input"
+      placeholder="e.g. llama3-8b-8192 or mistral-7b"
+      autocomplete="off">
+    <div class="hint">Exact model name as required by the provider</div>
+  </div>;
+}
   });
 })();
 
@@ -81,14 +98,15 @@ function validateAPI() {
   const k = (document.getElementById('k-' + S.prov)?.value || '').trim();
   const eb = document.getElementById('api-err');
   const et = document.getElementById('api-err-txt');
-  eb.style.display = 'none';
-  if (!k) { eb.style.display = 'flex'; et.innerHTML = 'Please enter your ' + p.label + ' API key.'; return; }
-  if (!k.startsWith(p.kp)) { eb.style.display = 'flex'; et.innerHTML = '<strong>Wrong format!</strong> ' + p.label + ' keys start with <code>' + p.kp + '…</code>'; return; }
+  [eb.style](http://eb.style).display = 'none';
+  if (!k) { [eb.style](http://eb.style).display = 'flex'; et.innerHTML = 'Please enter your ' + p.label + ' API key.'; return; }
+  if ([p.kp](http://p.kp) && !k.startsWith([p.kp](http://p.kp))) { [eb.style](http://eb.style).display = 'flex'; et.innerHTML = '<strong>Wrong format!</strong> ' + p.label + ' keys start with <code>' + [p.kp](http://p.kp) + '…</code>'; return; }
   S.key = k; S.model = document.getElementById('m-' + S.prov)?.value || '';
   document.getElementById('step1').style.display = 'none';
   document.getElementById('step2').style.display = 'block';
   setStep(2);
 }
+
 
 /* ─────────────────────────────────────────────────────────────
    STEP 2 — UPLOAD
