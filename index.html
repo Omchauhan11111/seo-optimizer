@@ -41,6 +41,22 @@
     </div></div>
     <div class="prov-tabs" id="prov-tabs"></div>
     <div id="prov-panels"></div>
+
+    <!-- ✅ NEW: Custom provider helper — shown only when custom tab is active -->
+    <div id="custom-fields-hint" style="display:none;margin-top:10px;">
+      <div class="alert alert-blue" style="font-size:12px;">
+        <span>ℹ️</span>
+        <div>
+          <strong>Popular Base URLs:</strong><br>
+          Groq: <code>https://api.groq.com/openai</code><br>
+          Mistral: <code>https://api.mistral.ai</code><br>
+          Together AI: <code>https://api.together.xyz</code><br>
+          Ollama (local): <code>http://localhost:11434</code><br>
+          Perplexity: <code>https://api.perplexity.ai</code>
+        </div>
+      </div>
+    </div>
+
     <div id="api-err" class="alert alert-red" style="display:none;margin-top:12px;">
       <span>❌</span><div id="api-err-txt"></div>
     </div>
@@ -381,8 +397,28 @@ function loadDocxFallback(){
   document.head.appendChild(s);
 }
 </script>
-<script src="config.js"></script>
-<script src="prompts.js"></script>
-<script src="app.js"></script>
+
+<!-- ✅ CORRECT SCRIPT LOAD ORDER -->
+<script src="providers.js"></script>  <!-- 1. Providers (PROV object) — pehle load hona chahiye -->
+<script src="config.js"></script>      <!-- 2. Config (CATEGORY_RULES etc.) -->
+<script src="prompts.js"></script>     <!-- 3. Prompts -->
+<script src="app.js"></script>         <!-- 4. App (PROV use karta hai) — sabse baad -->
+
+<!-- ✅ Custom provider hint toggle -->
+<script>
+  // Jab bhi custom tab active ho, Base URL hint show karo
+  document.addEventListener('DOMContentLoaded', function () {
+    const observer = new MutationObserver(function () {
+      const hintBox = document.getElementById('custom-fields-hint');
+      const customPanel = document.getElementById('pp-custom');
+      if (hintBox && customPanel) {
+        hintBox.style.display = customPanel.style.display === 'block' ? 'block' : 'none';
+      }
+    });
+    const panels = document.getElementById('prov-panels');
+    if (panels) observer.observe(panels, { subtree: true, attributes: true, attributeFilter: ['style'] });
+  });
+</script>
+
 </body>
 </html>
